@@ -52,7 +52,8 @@
 		"span": "cpp",
 		"sstream": "cpp",
 		"variant": "cpp",
-		"cstdarg": "cpp"
+		"cstdarg": "cpp",
+		"fstream": "cpp"
 	},
 	"files.watcherExclude": {
 		"**/target": true

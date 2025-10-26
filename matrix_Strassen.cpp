@@ -8,6 +8,8 @@
 #include <windows.h>
 #include <psapi.h>
 #include <iomanip>
+#include <fstream>
+#include <cstdio>
 
 using Matrix = std::vector<std::vector<double>>;
 
@@ -278,21 +280,34 @@ void printMatrix(const std::vector<std::vector<double>>& matrix) {
 }
 
 
-void printMemoryUsage() {
+double printMemoryUsage() {
     PROCESS_MEMORY_COUNTERS pmc;
 
     if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc))) {
-        double peakMemoryKB = pmc.PeakWorkingSetSize;
-        std::cout << std::fixed << std::setprecision(6);
-        std::cout << "Memory Used: " << peakMemoryKB << " B" << std::endl;
-        std::cout.unsetf(std::ios_base::floatfield);
+        double peakMemoryKB = pmc.PeakWorkingSetSize / 1024.0;
+        std::cout << "Memory Used: " << peakMemoryKB << " KB" << std::endl;
+        return peakMemoryKB;
     }
+    return 0;
 }
 
 
+struct resultsinCSV {
+    int size;
+    std::string algorithm;
+    unsigned long long operations;
+    double duration_ms;
+    double memory_kb;
+
+    resultsinCSV(int s, std::string algo, unsigned long long ops, double d, double mem)
+        : size(s), algorithm(algo), operations(ops), duration_ms(d), memory_kb(mem) {}
+};
+
+
+
 int main(int argc, char* argv[]) {
-    std::cout<< "Strassen's Matrix Multiplication (No Padding)" << std::endl;
-    std::vector<int> vector_matrices = {2, 3, 5, 10, 17, 50, 99, 100, 200}; 
+    std::cout<< "Strassen's Matrix Multiplication" << std::endl;
+    std::vector<int> vector_matrices = {2, 3, 5, 7, 20, 50, 100, 200}; 
     
     std::cout<< " We consider following matrices sizes: " << std::endl;
     for(int n : vector_matrices) { 
@@ -301,7 +316,8 @@ int main(int argc, char* argv[]) {
     std::cout << std::endl;
 
     unsigned long long general_op_count = 0;
-   
+    std::vector<resultsinCSV> results = {};
+
     for (int n : vector_matrices) 
     {
         Matrix A = createMatrix(n, n, true);
@@ -320,10 +336,22 @@ int main(int argc, char* argv[]) {
         std::cout << "Matrix size: " << n << "x" << n 
                   << ", Operations count (Strassen): " << general_op_count 
                   << ", Duration: " << duration.count() << " ms" << std::endl;
-        printMemoryUsage();
+        
+        double memory = printMemoryUsage();
+        results.emplace_back(n, "Strassen", general_op_count, duration.count(), memory);
+
         std::cout << std::endl<< std::endl;
         general_op_count = 0; 
     }
+
+
+    std::ofstream csvfile("matrix_multiplication_results_STRASSEN.csv"); 
+    csvfile << "Size,Algorithm,Operations,Duration_ms,Memory_kb\n";
+    for (const auto& res : results) {
+        csvfile << res.size << "," << res.algorithm << "," << res.operations << "," 
+                << res.duration_ms << "," << res.memory_kb << "\n";
+    }
+    csvfile.close();
     
     return 0;
 }

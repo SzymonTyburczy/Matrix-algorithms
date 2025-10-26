@@ -7,7 +7,8 @@
 #include <stdexcept> 
 #include <windows.h>
 #include <psapi.h>
-
+#include <fstream>
+#include <cstdio>
 
 //small alias for matrix type
 using Matrix = std::vector<std::vector<double>>;
@@ -187,17 +188,28 @@ void printMatrix(const std::vector<std::vector<double>>& matrix) {
     }
 }
 
-void printMemoryUsage() {
+double printMemoryUsage() {
     PROCESS_MEMORY_COUNTERS pmc;
 
     if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc))) {
         double peakMemoryKB = pmc.PeakWorkingSetSize / 1024.0;
         std::cout << "Memory Used: " << peakMemoryKB << " KB" << std::endl;
+        return peakMemoryKB;
     }
+    return 0;
 }
 
 
+struct resultsinCSV {
+    int size;
+    std::string algorithm;
+    unsigned long long operations;
+    double duration_ms;
+    double memory_kb;
 
+    resultsinCSV(int s, std::string algo, unsigned long long ops, double d, double mem)
+        : size(s), algorithm(algo), operations(ops), duration_ms(d), memory_kb(mem) {}
+};
 
 
 int main(int argc, char* argv[]) {
@@ -211,7 +223,9 @@ int main(int argc, char* argv[]) {
     std::cout << std::endl;
 
     unsigned long long general_op_count = 0;
-   
+    std::vector<resultsinCSV> results = {};
+
+
     for (int n : vector_matrices) 
     {
         Matrix A = createMatrix(n, n, true);
@@ -227,7 +241,10 @@ int main(int argc, char* argv[]) {
         std::chrono::duration<double, std::milli> duration = end - start;
         std::cout << "Matrix size: " << n << "x" << n << ", Operations count: " << general_op_count << ", Duration: " << duration.count()/1000.0 << " s" << std::endl;
 
-        printMemoryUsage();
+        double memory = printMemoryUsage();
+
+        results.push_back({n, "Recursive Binet", general_op_count, duration.count(), memory});
+
         std::cout << std::endl<< std::endl;
         general_op_count = 0; 
     }
@@ -241,6 +258,17 @@ int main(int argc, char* argv[]) {
     // std::cout << "Resultant Matrix C (A x B):" << std::endl;
     // printMatrix(C);
     // std::cout << "Operations count: " << general_op_count << std::endl;
+
+
+    // Writing results to CSV
+    std::ofstream csvfile("matrix_multiplication_results_BINET.csv"); 
+    csvfile << "Size,Algorithm,Operations,Duration_ms,Memory_kb\n";
+    for (const auto& res : results) {
+        csvfile << res.size << "," << res.algorithm << "," << res.operations << "," 
+                << res.duration_ms << "," << res.memory_kb << "\n";
+    }
+    csvfile.close();
+
 
     return 0;
 }
