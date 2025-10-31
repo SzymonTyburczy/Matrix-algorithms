@@ -1,0 +1,13 @@
+.vscode/
+.history/
+.idea/
+
+*.exe
+*.o
+*.obj
+
+
+*.tmp
+*.temp
+.cache/
+*.cache/
