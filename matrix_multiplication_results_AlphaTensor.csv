@@ -1,0 +1,9 @@
+Size,Algorithm,Operations,Duration_ms,Memory_kb
+2,AlphaTensor Hybrid,12,0.0024,4600
+3,AlphaTensor Hybrid,45,0.0025,4604
+5,AlphaTensor Hybrid,308,0.0174,4628
+7,AlphaTensor Hybrid,637,0.028,4636
+20,AlphaTensor Hybrid,20912,0.5479,4712
+50,AlphaTensor Hybrid,247500,6.0234,4964
+100,AlphaTensor Hybrid,1990000,29.614,5700
+200,AlphaTensor Hybrid,15960000,228.614,8636
