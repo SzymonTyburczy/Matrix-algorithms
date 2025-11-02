@@ -9,145 +9,71 @@
 #include <psapi.h>
 #include <fstream>
 #include <cstdio>
+#include <iomanip>
 
-// small alias for matrix type
+#include "helperFunctions.h"
+
 using Matrix = std::vector<std::vector<double>>;
 
-Matrix createMatrix(int rows, int cols, bool random = false);
-Matrix addMatrices(const Matrix &A, const Matrix &B, unsigned long long &op_count);
-
-// created a submatrix
-Matrix subMatrix(const Matrix &M, int r_start, int r_end, int c_start, int c_end)
+void recursiveMultiply(Matrix &C, int rC, int cC,
+                       const Matrix &A, int rA, int cA,
+                       const Matrix &B, int rB, int cB,
+                       int m, int k, int p, unsigned long long &op_count)
 {
-    int rows = r_end - r_start;
-    int cols = c_end - c_start;
-    Matrix sub = createMatrix(rows, cols);
-
-    for (int i = 0; i < rows; ++i)
-    {
-        for (int j = 0; j < cols; ++j)
-        {
-            sub[i][j] = M[r_start + i][c_start + j];
-        }
-    }
-    return sub;
-}
-// joining 4 submatrices into one
-void joinMatrices(Matrix &C, const Matrix &c11, const Matrix &c12,
-                  const Matrix &c21, const Matrix &c22, int m_split, int p_split)
-{
-
-    for (int i = 0; i < c11.size(); ++i)
-    {
-        for (int j = 0; j < c11[0].size(); ++j)
-        {
-            C[i][j] = c11[i][j];
-        }
-    }
-
-    for (int i = 0; i < c12.size(); ++i)
-    {
-        if (!c12[i].empty())
-        {
-            for (int j = 0; j < c12[0].size(); ++j)
-            {
-                C[i][j + p_split] = c12[i][j];
-            }
-        }
-    }
-
-    for (int i = 0; i < c21.size(); ++i)
-    {
-        if (!c21[i].empty())
-        {
-            for (int j = 0; j < c21[0].size(); ++j)
-            {
-                C[i + m_split][j] = c21[i][j];
-            }
-        }
-    }
-
-    for (int i = 0; i < c22.size(); ++i)
-    {
-        if (!c22[i].empty())
-        {
-            for (int j = 0; j < c22[0].size(); ++j)
-            {
-                C[i + m_split][j + p_split] = c22[i][j];
-            }
-        }
-    }
-}
-
-Matrix recursiveMultiply(const Matrix &A, const Matrix &B, unsigned long long &op_count)
-{
-    int m = A.size();
-    int k = (m > 0) ? A[0].size() : 0;
-    int p = (B.size() > 0) ? B[0].size() : 0;
-
-    if (m == 0 || k == 0 || p == 0)
-    {
-        return createMatrix(m, p);
-    }
-
     if (m <= 2 || k <= 2 || p <= 2)
     {
-        Matrix C_iter = createMatrix(m, p);
-        for (int i = 0; i < m; ++i)
-        {
-            for (int j = 0; j < p; ++j)
-            {
-                double sum = 0.0;
-                for (int l = 0; l < k; ++l)
-                {
-                    sum += A[i][l] * B[l][j];
-                    op_count++;
-                }
-                C_iter[i][j] = sum;
-                if (k > 1)
-                {
-                    op_count += (k - 1);
-                }
-            }
-        }
-        return C_iter;
+        iterativeMultiply_inplace(C, rC, cC, A, rA, cA, B, rB, cB, m, k, p, op_count);
+        return;
     }
 
     int m_split = m / 2;
     int k_split = k / 2;
     int p_split = p / 2;
 
-    Matrix a11 = subMatrix(A, 0, m_split, 0, k_split);
-    Matrix a12 = subMatrix(A, 0, m_split, k_split, k);
-    Matrix a21 = subMatrix(A, m_split, m, 0, k_split);
-    Matrix a22 = subMatrix(A, m_split, m, k_split, k);
+    int m_rem = m - m_split;
+    int k_rem = k - k_split;
+    int p_rem = p - p_split;
 
-    Matrix b11 = subMatrix(B, 0, k_split, 0, p_split);
-    Matrix b12 = subMatrix(B, 0, k_split, p_split, p);
-    Matrix b21 = subMatrix(B, k_split, k, 0, p_split);
-    Matrix b22 = subMatrix(B, k_split, k, p_split, p);
+    Matrix c11_p1 = createMatrix(m_split, p_split, false);
+    Matrix c11_p2 = createMatrix(m_split, p_split, false);
+    Matrix c12_p1 = createMatrix(m_split, p_rem, false);
+    Matrix c12_p2 = createMatrix(m_split, p_rem, false);
+    Matrix c21_p1 = createMatrix(m_rem, p_split, false);
+    Matrix c21_p2 = createMatrix(m_rem, p_split, false);
+    Matrix c22_p1 = createMatrix(m_rem, p_rem, false);
+    Matrix c22_p2 = createMatrix(m_rem, p_rem, false);
 
-    Matrix c11_p1 = recursiveMultiply(a11, b11, op_count);
-    Matrix c11_p2 = recursiveMultiply(a12, b21, op_count);
+    // 1. C11_p1 = A11 * B11
+    recursiveMultiply(c11_p1, 0, 0, A, rA, cA, B, rB, cB, m_split, k_split, p_split, op_count);
+    // 2. C11_p2 = A12 * B21
+    recursiveMultiply(c11_p2, 0, 0, A, rA, cA + k_split, B, rB + k_split, cB, m_split, k_rem, p_split, op_count);
 
-    Matrix c12_p1 = recursiveMultiply(a11, b12, op_count);
-    Matrix c12_p2 = recursiveMultiply(a12, b22, op_count);
+    // 3. C12_p1 = A11 * B12
+    recursiveMultiply(c12_p1, 0, 0, A, rA, cA, B, rB, cB + p_split, m_split, k_split, p_rem, op_count);
+    // 4. C12_p2 = A12 * B22
+    recursiveMultiply(c12_p2, 0, 0, A, rA, cA + k_split, B, rB + k_split, cB + p_split, m_split, k_rem, p_rem, op_count);
 
-    Matrix c21_p1 = recursiveMultiply(a21, b11, op_count);
-    Matrix c21_p2 = recursiveMultiply(a22, b21, op_count);
+    // 5. C21_p1 = A21 * B11
+    recursiveMultiply(c21_p1, 0, 0, A, rA + m_split, cA, B, rB, cB, m_rem, k_split, p_split, op_count);
+    // 6. C21_p2 = A22 * B21
+    recursiveMultiply(c21_p2, 0, 0, A, rA + m_split, cA + k_split, B, rB + k_split, cB, m_rem, k_rem, p_split, op_count);
 
-    Matrix c22_p1 = recursiveMultiply(a21, b12, op_count);
-    Matrix c22_p2 = recursiveMultiply(a22, b22, op_count);
+    // 7. C22_p1 = A21 * B12
+    recursiveMultiply(c22_p1, 0, 0, A, rA + m_split, cA, B, rB, cB + p_split, m_rem, k_split, p_rem, op_count);
+    // 8. C22_p2 = A22 * B22
+    recursiveMultiply(c22_p2, 0, 0, A, rA + m_split, cA + k_split, B, rB + k_split, cB + p_split, m_rem, k_rem, p_rem, op_count);
 
-    Matrix c11 = addMatrices(c11_p1, c11_p2, op_count);
-    Matrix c12 = addMatrices(c12_p1, c12_p2, op_count);
-    Matrix c21 = addMatrices(c21_p1, c21_p2, op_count);
-    Matrix c22 = addMatrices(c22_p1, c22_p2, op_count);
+    // C11 = c11_p1 + c11_p2
+    addMatrices_inplace(C, rC, cC, c11_p1, 0, 0, c11_p2, 0, 0, m_split, p_split, op_count);
 
-    Matrix C = createMatrix(m, p);
-    joinMatrices(C, c11, c12, c21, c22, m_split, p_split);
+    // C12 = c12_p1 + c12_p2
+    addMatrices_inplace(C, rC, cC + p_split, c12_p1, 0, 0, c12_p2, 0, 0, m_split, p_rem, op_count);
 
-    return C;
+    // C21 = c21_p1 + c21_p2
+    addMatrices_inplace(C, rC + m_split, cC, c21_p1, 0, 0, c21_p2, 0, 0, m_rem, p_split, op_count);
+
+    // C22 = c22_p1 + c22_p2
+    addMatrices_inplace(C, rC + m_split, cC + p_split, c22_p1, 0, 0, c22_p2, 0, 0, m_rem, p_rem, op_count);
 }
 
 Matrix multiply_recursive_wrapper(const Matrix &A, const Matrix &B, unsigned long long &op_count)
@@ -158,96 +84,22 @@ Matrix multiply_recursive_wrapper(const Matrix &A, const Matrix &B, unsigned lon
     }
 
     op_count = 0;
-    return recursiveMultiply(A, B, op_count);
-}
+    size_t m = A.size();
+    size_t k = A[0].size();
+    size_t p = B[0].size();
 
-// Function to add two matrices (pretty obvious i guess)
-Matrix addMatrices(const Matrix &A, const Matrix &B, unsigned long long &op_count)
-{
-    if (A.empty() || A[0].empty())
-        return B;
-    if (B.empty() || B[0].empty())
-        return A;
+    Matrix C = createMatrix(m, p, false);
 
-    int n = A.size();
-    int m = A[0].size();
+    recursiveMultiply(C, 0, 0, A, 0, 0, B, 0, 0, m, k, p, op_count);
 
-    if (n != B.size() || m != B[0].size())
-    {
-        throw std::invalid_argument("Incompatible matrix dimensions for addition.");
-    }
-
-    Matrix C = createMatrix(n, m);
-    for (int i = 0; i < n; i++)
-    {
-        for (int j = 0; j < m; j++)
-        {
-            C[i][j] = A[i][j] + B[i][j];
-            op_count++;
-        }
-    }
     return C;
 }
 
-Matrix createMatrix(int rows, int cols, bool random)
-{
-    Matrix mat(rows, std::vector<double>(cols, 0.0));
-    if (random && rows > 0 && cols > 0)
-    {
-        unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-        std::mt19937 gen(seed);
-        std::uniform_real_distribution<double> dis(0.00000001, 1.0);
-
-        for (int i = 0; i < rows; ++i)
-        {
-            for (int j = 0; j < cols; ++j)
-            {
-                mat[i][j] = dis(gen);
-            }
-        }
-    }
-    return mat;
-}
-
-void printMatrix(const std::vector<std::vector<double>> &matrix)
-{
-    for (const auto &row : matrix)
-    {
-        for (const auto &val : row)
-        {
-            printf("%0.4f ", val);
-        }
-        std::cout << std::endl;
-    }
-}
-
-double printMemoryUsage()
-{
-    PROCESS_MEMORY_COUNTERS pmc;
-
-    if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)))
-    {
-        double peakMemoryKB = pmc.PeakWorkingSetSize / 1024.0;
-        std::cout << "Memory Used: " << peakMemoryKB << " KB" << std::endl;
-        return peakMemoryKB;
-    }
-    return 0;
-}
-
-struct resultsinCSV
-{
-    int size;
-    std::string algorithm;
-    unsigned long long operations;
-    double duration_ms;
-    double memory_kb;
-
-    resultsinCSV(int s, std::string algo, unsigned long long ops, double d, double mem)
-        : size(s), algorithm(algo), operations(ops), duration_ms(d), memory_kb(mem) {}
-};
-
 int main(int argc, char *argv[])
 {
+    (void)argc;
+    (void)argv;
+
     std::cout << "Recursive Matrix Multiplication - Binet" << std::endl;
     std::vector<int> vector_matrices = {2, 3, 5, 7, 20, 50, 100, 200};
 
@@ -261,10 +113,12 @@ int main(int argc, char *argv[])
     unsigned long long general_op_count = 0;
     std::vector<resultsinCSV> results = {};
 
+    double baselineMemoryKB = getPeakPrivateUsageKB();
+
     for (int n : vector_matrices)
     {
-        Matrix A = createMatrix(n, n, true);
-        Matrix B = createMatrix(n, n, true);
+        Matrix A = createMatrix(static_cast<size_t>(n), static_cast<size_t>(n), true);
+        Matrix B = createMatrix(static_cast<size_t>(n), static_cast<size_t>(n), true);
 
         auto start = std::chrono::high_resolution_clock::now();
 
@@ -273,28 +127,23 @@ int main(int argc, char *argv[])
         auto end = std::chrono::high_resolution_clock::now();
 
         std::chrono::duration<double, std::milli> duration = end - start;
-        std::cout << "Matrix size: " << n << "x" << n << ", Operations count: " << general_op_count << ", Duration: " << duration.count() / 1000.0 << " s" << std::endl;
 
-        double memory = printMemoryUsage();
+        std::cout << "Matrix size: " << n << "x" << n
+                  << ", Operations count: " << general_op_count
+                  << ", Duration: " << duration.count() << " ms" << std::endl;
 
-        results.push_back({n, "Recursive Binet", general_op_count, duration.count(), memory});
+        double peakMemoryKB = getPeakPrivateUsageKB();
+        double algorithmMemoryKB = peakMemoryKB - baselineMemoryKB;
+
+        printf("Memory Used (Algorithm): %.2f KB\n", algorithmMemoryKB);
+
+        results.push_back({n, "Recursive Binet", general_op_count, duration.count(), algorithmMemoryKB});
 
         std::cout << std::endl
                   << std::endl;
         general_op_count = 0;
     }
-    // Matrix A = createMatrix(3, 3, true);
-    // Matrix B = createMatrix(3, 3, true);
-    // std::cout << "Matrix A:" << std::endl;
-    // printMatrix(A);
-    // std::cout << "Matrix B:" << std::endl;
-    // printMatrix(B);
-    // Matrix C = multiply_recursive_wrapper(A, B, general_op_count);
-    // std::cout << "Resultant Matrix C (A x B):" << std::endl;
-    // printMatrix(C);
-    // std::cout << "Operations count: " << general_op_count << std::endl;
 
-    // Writing results to CSV
     std::ofstream csvfile("matrix_multiplication_results_BINET.csv");
     csvfile << "Size,Algorithm,Operations,Duration_ms,Memory_kb\n";
     for (const auto &res : results)

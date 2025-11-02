@@ -186,3 +186,27 @@ double getPeakPrivateUsageKB()
     }
     return 0;
 }
+
+void iterativeMultiply_inplace(Matrix &C, int rC, int cC,
+                               const Matrix &A, int rA, int cA,
+                               const Matrix &B, int rB, int cB,
+                               int m, int k, int p, unsigned long long &op_count)
+{
+    for (int i = 0; i < m; ++i)
+    {
+        for (int j = 0; j < p; ++j)
+        {
+            double sum = 0.0;
+            for (int l = 0; l < k; ++l)
+            {
+                sum += A[rA + i][cA + l] * B[rB + l][cB + j];
+                op_count++;
+            }
+            C[rC + i][cC + j] = sum;
+            if (k > 1)
+            {
+                op_count += (k - 1);
+            }
+        }
+    }
+}
