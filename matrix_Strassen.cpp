@@ -308,11 +308,11 @@ Matrix multiply_strassen_wrapper(const Matrix &A, const Matrix &B, unsigned long
 {
     if (A.empty() || B.empty() || A[0].size() != B.size())
     {
-        throw std::invalid_argument("Niezgodne wymiary macierzy do mnozenia.");
+        throw std::invalid_argument("Incompatible matrix dimensions for multiplication.");
     }
     if (A.size() != A[0].size() || B.size() != B[0].size() || A.size() != B.size())
     {
-        throw std::invalid_argument("Macierze wejsciowe nie sa kwadratowe o tym samym wymiarze N.");
+        throw std::invalid_argument("Input matrices are not square and of the same size N.");
     }
 
     op_count = 0;
