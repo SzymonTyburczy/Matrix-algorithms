@@ -7,17 +7,16 @@
 #include <stdexcept>
 #include <fstream>
 #include <cstdio>
-#include <cassert>   // Zachowane dla ewentualnych przyszłych testów
-#include <windows.h> // Potrzebne dla PSAPI
-#include <psapi.h>   // Potrzebne dla GetProcessMemoryInfo
+#include <cassert>
+#include <windows.h>
+#include <psapi.h>
 #include <iomanip>
 
-// Dołączenie zoptymalizowanych funkcji pomocniczych
 #include "helperFunctions.h"
 
 using Matrix = std::vector<std::vector<double>>;
 
-// Struktura CSV specyficzna dla tego benchmarku (zachowana)
+// Structure to hold AI results
 struct AIRresult
 {
     int n_level; // 0 for 4x5, 1 for 8x10, etc.
@@ -28,44 +27,14 @@ struct AIRresult
     double memory_kb;
 };
 
-// Funkcja pomocnicza do sprawdzania poprawności (zachowana)
-bool areMatricesEqual(const Matrix &A, const Matrix &B, double epsilon = 1e-9)
-{
-    if (A.size() != B.size())
-        return false;
-    if (A.empty())
-        return B.empty();
-    if (A[0].size() != B[0].size())
-        return false;
-    size_t rows = A.size();
-    size_t cols = A[0].size();
-    for (size_t i = 0; i < rows; ++i)
-    {
-        for (size_t j = 0; j < cols; ++j)
-        {
-            if (std::abs(A[i][j] - B[i][j]) > epsilon)
-            {
-                return false;
-            }
-        }
-    }
-    return true;
-}
-
-// --- ZREFAKTORYZOWANY PRZYPADEK BAZOWY (4x5 * 5x5) ---
-// Działa teraz "w miejscu" na "widokach" (przesunięciach) macierzy
 void matrix_ai_inplace(Matrix &C, int rC, int cC,
                        const Matrix &A, int rA, int cA,
                        const Matrix &B, int rB, int cB,
                        unsigned long long &op_count)
 {
-    // A jest "widokiem" 4x5 (przesunięcia rA, cA)
-    // B jest "widokiem" 5x5 (przesunięcia rB, cB)
-    // C jest "widokiem" 4x5 (przesunięcia rC, cC)
 
     std::vector<double> H(76);
 
-    // Oblicz wartości H (wszystkie A[i][j] i B[i][j] zastąpione przez A[rA+i][cA+j] itd.)
     H[0] = A[rA + 2][cA + 1] * (-B[rB + 1][cB + 0] - B[rB + 1][cB + 4] - B[rB + 2][cB + 0]);
     op_count += 3;
     H[1] = (A[rA + 1][cA + 1] + A[rA + 1][cA + 4] - A[rA + 2][cA + 4]) * (-B[rB + 1][cB + 4] - B[rB + 4][cB + 0]);
@@ -219,7 +188,6 @@ void matrix_ai_inplace(Matrix &C, int rC, int cC,
     H[75] = (A[rA + 0][cA + 2] + A[rA + 2][cA + 2]) * (-B[rB + 0][cB + 0] + B[rB + 0][cB + 3] - B[rB + 0][cB + 4] + B[rB + 1][cB + 3] + B[rB + 2][cB + 3] - B[rB + 2][cB + 4]);
     op_count += 7;
 
-    // Oblicz macierz C (4x5) - zapis "w miejscu" do C[rC][cC]
     C[rC + 0][cC + 0] = -H[9] + H[11] + H[13] - H[14] - H[15] + H[52] + H[4] - H[65] - H[6];
     op_count += 8;
     C[rC + 1][cC + 0] = H[9] + H[10] - H[11] + H[12] + H[14] + H[15] - H[16] - H[43] + H[50];
@@ -262,8 +230,6 @@ void matrix_ai_inplace(Matrix &C, int rC, int cC,
     op_count += 9;
 }
 
-// --- ZREFAKTORYZOWANA FUNKCJA REKURENCYJNA ---
-// Działa teraz "w miejscu" jak Binet i Strassen
 void multiply_ai_recursive_inplace(Matrix &C, int rC, int cC,
                                    const Matrix &A, int rA, int cA,
                                    const Matrix &B, int rB, int cB,
@@ -273,15 +239,12 @@ void multiply_ai_recursive_inplace(Matrix &C, int rC, int cC,
     const int K_BASE = 5;
     const int P_BASE = 5;
 
-    // Przypadek bazowy: wymiary to 4x5 * 5x5
     if (M == M_BASE && K == K_BASE && P == P_BASE)
     {
         matrix_ai_inplace(C, rC, cC, A, rA, cA, B, rB, cB, op_count);
         return;
     }
 
-    // Sprawdzenie, czy wymiary są podzielne (tak jak w oryginalnym kodzie)
-    // To jest ograniczenie tego konkretnego algorytmu
     if (M % 2 != 0 || K % 2 != 0 || P % 2 != 0)
     {
         std::cerr << "Error: Matrix dimensions (" << M << "x" << K << ") * ("
@@ -290,14 +253,10 @@ void multiply_ai_recursive_inplace(Matrix &C, int rC, int cC,
         throw std::invalid_argument("Matrix does not have appropriate dimensions for this algorithm.");
     }
 
-    // Oblicz punkty podziału (identycznie jak w Binet)
     int m_split = M / 2;
     int k_split = K / 2;
     int p_split = P / 2;
 
-    // (Dla tego algorytmu m_rem == m_split, k_rem == k_split, p_rem == p_split)
-
-    // Stwórz 8 macierzy tymczasowych
     Matrix c11_p1 = createMatrix(m_split, p_split);
     Matrix c11_p2 = createMatrix(m_split, p_split);
     Matrix c12_p1 = createMatrix(m_split, p_split);
@@ -307,7 +266,6 @@ void multiply_ai_recursive_inplace(Matrix &C, int rC, int cC,
     Matrix c22_p1 = createMatrix(m_split, p_split);
     Matrix c22_p2 = createMatrix(m_split, p_split);
 
-    // 8 wywołań rekurencyjnych (zastępuje subMatrix)
     // A11*B11
     multiply_ai_recursive_inplace(c11_p1, 0, 0, A, rA, cA, B, rB, cB, m_split, k_split, p_split, op_count);
     // A12*B21
@@ -325,7 +283,6 @@ void multiply_ai_recursive_inplace(Matrix &C, int rC, int cC,
     // A22*B22
     multiply_ai_recursive_inplace(c22_p2, 0, 0, A, rA + m_split, cA + k_split, B, rB + k_split, cB + p_split, m_split, k_split, p_split, op_count);
 
-    // Składanie wyników (zastępuje addMatrices i joinMatrices)
     // C11 = c11_p1 + c11_p2
     addMatrices_inplace(C, rC, cC, c11_p1, 0, 0, c11_p2, 0, 0, m_split, p_split, op_count);
     // C12 = c12_p1 + c12_p2
@@ -336,7 +293,6 @@ void multiply_ai_recursive_inplace(Matrix &C, int rC, int cC,
     addMatrices_inplace(C, rC + m_split, cC + p_split, c22_p1, 0, 0, c22_p2, 0, 0, m_split, p_split, op_count);
 }
 
-// --- NOWA FUNKCJA WRAPPER ---
 Matrix multiply_ai_recursive_wrapper(const Matrix &A, const Matrix &B, unsigned long long &op_count)
 {
     size_t M = A.size();
@@ -351,13 +307,12 @@ Matrix multiply_ai_recursive_wrapper(const Matrix &A, const Matrix &B, unsigned 
     op_count = 0;
     Matrix C = createMatrix(M, P, false);
 
-    // Uruchom algorytm rekurencyjny "w miejscu"
     multiply_ai_recursive_inplace(C, 0, 0, A, 0, 0, B, 0, 0, M, K, P, op_count);
 
     return C;
 }
 
-// --- ZAKTUALIZOWANA FUNKCJA MAIN ---
+/*
 int main()
 {
 
@@ -369,7 +324,6 @@ int main()
 
     int max_n_level = 5; // Test up to size (4*2^5) x (5*2^5) = 128x160
 
-    // Zmierz bazowe użycie pamięci (z helperFunctions)
     double baselineMemoryKB = getPeakPrivateUsageKB();
 
     for (int n = 0; n <= max_n_level; ++n)
@@ -383,55 +337,39 @@ int main()
 
         std::cout << "\n--- Testing (Level n=" << n << "): " << dims_str << " ---" << std::endl;
 
-        // Użyj createMatrix z helperFunctions
         Matrix A = createMatrix(M, K, true);
         Matrix B = createMatrix(K, P, true);
 
         op_count_naive = 0;
-        // Użyj iterativeMultiply (alias dla naive) z helperFunctions
         Matrix C_benchmark = iterativeMultiply(A, B, op_count_naive);
 
         op_count_ai = 0;
-        // Użyj nowego wrappera, który obsługuje wszystkie przypadki (n=0 i n>0)
         Matrix C_ai = multiply_ai_recursive_wrapper(A, B, op_count_ai);
 
-        bool ai_ok = areMatricesEqual(C_benchmark, C_ai, 1e-9);
-        std::cout << "Correctness: " << (ai_ok ? "PASSED" : "FAILED") << std::endl;
-
-        if (!ai_ok)
-        {
-            std::cout << "Critical error, AI algorithm is not working correctly. Stopping benchmark." << std::endl;
-            break;
-        }
-
-        // --- Pomiar Naive (Iterative) ---
         op_count_naive = 0;
         auto start_naive = std::chrono::high_resolution_clock::now();
-        iterativeMultiply(A, B, op_count_naive); // Użyj funkcji z helper
+        iterativeMultiply(A, B, op_count_naive);
         auto end_naive = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> duration_naive = end_naive - start_naive;
 
-        // Mierz deltę pamięci
         double peakMemoryNaive = getPeakPrivateUsageKB();
         double memory_naive = peakMemoryNaive - baselineMemoryKB;
-        baselineMemoryKB = peakMemoryNaive; // Zresetuj bazę dla następnego pomiaru
+        baselineMemoryKB = peakMemoryNaive;
 
         std::cout << "Naive:    Operations: " << std::setw(12) << op_count_naive
                   << ", Time: " << std::fixed << std::setprecision(4) << duration_naive.count() << " ms" << std::endl;
         printf("          Memory (Delta): %.2f KB\n", memory_naive);
         results.push_back({n, dims_str, "Naive", op_count_naive, duration_naive.count(), memory_naive});
 
-        // --- Pomiar AI (Recursive) ---
         op_count_ai = 0;
         auto start_ai = std::chrono::high_resolution_clock::now();
-        multiply_ai_recursive_wrapper(A, B, op_count_ai); // Użyj nowego wrappera
+        multiply_ai_recursive_wrapper(A, B, op_count_ai);
         auto end_ai = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> duration_ai = end_ai - start_ai;
 
-        // Mierz deltę pamięci
         double peakMemoryAI = getPeakPrivateUsageKB();
         double memory_ai = peakMemoryAI - baselineMemoryKB;
-        baselineMemoryKB = peakMemoryAI; // Zresetuj bazę
+        baselineMemoryKB = peakMemoryAI;
 
         std::cout << "AI (Rec): Operations: " << std::setw(12) << op_count_ai
                   << ", Time: " << std::fixed << std::setprecision(4) << duration_ai.count() << " ms" << std::endl;
@@ -451,4 +389,4 @@ int main()
     std::cout << "\nBenchmark finished. Results saved to 'ai_recursive_benchmark.csv'" << std::endl;
 
     return 0;
-}
+}*/

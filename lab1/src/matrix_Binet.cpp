@@ -95,6 +95,7 @@ Matrix multiply_recursive_wrapper(const Matrix &A, const Matrix &B, unsigned lon
     return C;
 }
 
+/*
 int main(int argc, char *argv[])
 {
     (void)argc;
@@ -154,4 +155,4 @@ int main(int argc, char *argv[])
     csvfile.close();
 
     return 0;
-}
+}*/

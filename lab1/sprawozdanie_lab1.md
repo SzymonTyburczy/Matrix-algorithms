@@ -92,15 +92,19 @@ W trakcie eksperymentów zliczano liczbę operacji zmiennoprzecinkowych (dodawan
 - Funkcja generująca macierz o zadanych wymiarach z wartościami między 0.00000001 a 1.0
 
 ```cpp
-Matrix createMatrix(int rows, int cols, bool random) {
+Matrix createMatrix(size_t rows, size_t cols, bool random)
+{
     Matrix mat(rows, std::vector<double>(cols, 0.0));
-    if (random && rows > 0 && cols > 0) {
+    if (random && rows > 0 && cols > 0)
+    {
         unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
         std::mt19937 gen(seed);
         std::uniform_real_distribution<double> dis(0.00000001, 1.0);
 
-        for (int i = 0; i < rows; ++i) {
-            for (int j = 0; j < cols; ++j) {
+        for (size_t i = 0; i < rows; ++i)
+        {
+            for (size_t j = 0; j < cols; ++j)
+            {
                 mat[i][j] = dis(gen);
             }
         }
