@@ -113,62 +113,84 @@ Matrix createMatrix(size_t rows, size_t cols, bool random)
 }
 ```
 
-- Funkcja zwracająca podmacierz
+- Funkcje dodająca dwie macierze i zliczająca operacje
 
 ```cpp
-// wklej tu poprawioną funkcję subMatrix
-```
-
-- Funkcja dodająca dwie macierze i zliczająca operacje
-
-```cpp
-// wklej tu poprawioną funkcję addMatrices
-```
-
-- Funkcja odejmująca dwie macierze i zliczająca operacje
-
-```cpp
-// wklej tu poprawioną funkcję subtractMatrices
-```
-
-- Funkcja łącząca cztery podmacierze w jedną macierz
-
-```cpp
-// wklej tu poprawioną funkcję joinMatrices
-```
-
-- Funkcja zwracająca użycie pamięci w KB
-
-```cpp
-double printMemoryUsage()
+Matrix addMatrices(const Matrix &A, int rA, int cA,
+                   const Matrix &B, int rB, int cB,
+                   int rows, int cols, unsigned long long &op_count)
 {
-    PROCESS_MEMORY_COUNTERS pmc;
-
-    if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)))
+    Matrix C = createMatrix(rows, cols);
+    for (int i = 0; i < rows; i++)
     {
-        double peakMemoryKB = pmc.PeakWorkingSetSize / 1024.0;
-        std::cout << "Memory Used: " << peakMemoryKB << " KB" << std::endl;
-        return peakMemoryKB;
+        for (int j = 0; j < cols; j++)
+        {
+            C[i][j] = A[rA + i][cA + j] + B[rB + i][cB + j];
+            op_count++;
+        }
     }
-    return 0;
+    return C;
+}
+
+void addMatrices_inplace(Matrix &C, int rC, int cC,
+                         const Matrix &A, int rA, int cA,
+                         const Matrix &B, int rB, int cB,
+                         int rows, int cols, unsigned long long &op_count)
+{
+    for (int i = 0; i < rows; i++)
+    {
+        for (int j = 0; j < cols; j++)
+        {
+            C[rC + i][cC + j] = A[rA + i][cA + j] + B[rB + i][cB + j];
+            op_count++;
+        }
+    }
+}
+```
+
+- Funkcje odejmująca dwie macierze i zliczająca operacje
+
+```cpp
+Matrix subtractMatrices(const Matrix &A, int rA, int cA,
+                        const Matrix &B, int rB, int cB,
+                        int rows, int cols, unsigned long long &op_count)
+{
+    Matrix C = createMatrix(rows, cols);
+    for (int i = 0; i < rows; i++)
+    {
+        for (int j = 0; j < cols; j++)
+        {
+            C[i][j] = A[rA + i][cA + j] - B[rB + i][cB + j];
+            op_count++;
+        }
+    }
+    return C;
+}
+
+void subtractMatrices_inplace(Matrix &C, int rC, int cC,
+                              const Matrix &A, int rA, int cA,
+                              const Matrix &B, int rB, int cB,
+                              int rows, int cols, unsigned long long &op_count)
+{
+    for (int i = 0; i < rows; i++)
+    {
+        for (int j = 0; j < cols; j++)
+        {
+            C[rC + i][cC + j] = A[rA + i][cA + j] - B[rB + i][cB + j];
+            op_count++;
+        }
+    }
 }
 ```
 
 - Funkcja mnożenia iteracyjnego z licznikiem operacji
 
 ```cpp
-Matrix iterativeMultiply(const Matrix &A, const Matrix &B, unsigned long long &op_count)
+void iterativeMultiply_inplace(Matrix &C, int rC, int cC,
+                               const Matrix &A, int rA, int cA,
+                               const Matrix &B, int rB, int cB,
+                               int m, int k, int p, unsigned long long &op_count)
 {
-    int m = A.size();
-    int k = (m > 0) ? A[0].size() : 0;
-    int p = (B.size() > 0) ? B[0].size() : 0;
-
-    if (k != (int)B.size())
-    {
-        throw std::invalid_argument("Incompatible matrix dimensions for multiplication.");
-    }
-
-    Matrix C = createMatrix(m, p);
     for (int i = 0; i < m; ++i)
     {
         for (int j = 0; j < p; ++j)
@@ -176,85 +198,95 @@ Matrix iterativeMultiply(const Matrix &A, const Matrix &B, unsigned long long &o
             double sum = 0.0;
             for (int l = 0; l < k; ++l)
             {
-                sum += A[i][l] * B[l][j];
+                sum += A[rA + i][cA + l] * B[rB + l][cB + j];
                 op_count++;
             }
-            C[i][j] = sum;
+            C[rC + i][cC + j] = sum;
             if (k > 1)
             {
                 op_count += (k - 1);
             }
         }
     }
-    return C;
+}
+```
+
+- Funkcja zwracająca maksymalne zużycie pamięci w KB podczas działania programu
+
+```cpp
+double getPeakPrivateUsageKB()
+{
+    PROCESS_MEMORY_COUNTERS pmc;
+    if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)))
+    {
+        return pmc.PeakPagefileUsage / 1024.0;
+    }
+    return 0;
 }
 ```
 
 ### Implementacja rekurencyjna Binét
 
 ```cpp
-Matrix recursiveMultiply(const Matrix& A, const Matrix& B, unsigned long long& op_count) {
-    int m = A.size();
-    int k = (m > 0) ? A[0].size() : 0;
-    int p = (B.size() > 0) ? B[0].size() : 0;
-
-    if (m == 0 || k == 0 || p == 0) {
-        return createMatrix(m, p);
-    }
-
-    if (m <= 2 || k <= 2 || p <= 2) {
-        Matrix C_iter = createMatrix(m, p);
-        for (int i = 0; i < m; ++i) {
-            for (int j = 0; j < p; ++j) {
-                double sum = 0.0;
-                for (int l = 0; l < k; ++l) {
-                    sum += A[i][l] * B[l][j];
-                    op_count++;
-                }
-                C_iter[i][j] = sum;
-                if (k > 1) {
-                    op_count += (k - 1);
-                }
-            }
-        }
-        return C_iter;
+void recursiveMultiply(Matrix &C, int rC, int cC,
+                       const Matrix &A, int rA, int cA,
+                       const Matrix &B, int rB, int cB,
+                       int m, int k, int p, unsigned long long &op_count)
+{
+    if (m <= 2 || k <= 2 || p <= 2)
+    {
+        iterativeMultiply_inplace(C, rC, cC, A, rA, cA, B, rB, cB, m, k, p, op_count);
+        return;
     }
 
     int m_split = m / 2;
     int k_split = k / 2;
     int p_split = p / 2;
 
-    Matrix a11 = subMatrix(A, 0, m_split, 0, k_split);
-    Matrix a12 = subMatrix(A, 0, m_split, k_split, k);
-    Matrix a21 = subMatrix(A, m_split, m, 0, k_split);
-    Matrix a22 = subMatrix(A, m_split, m, k_split, k);
+    int m_rem = m - m_split;
+    int k_rem = k - k_split;
+    int p_rem = p - p_split;
 
-    Matrix b11 = subMatrix(B, 0, k_split, 0, p_split);
-    Matrix b12 = subMatrix(B, 0, k_split, p_split, p);
-    Matrix b21 = subMatrix(B, k_split, k, 0, p_split);
-    Matrix b22 = subMatrix(B, k_split, k, p_split, p);
+    Matrix c11_p1 = createMatrix(m_split, p_split, false);
+    Matrix c11_p2 = createMatrix(m_split, p_split, false);
+    Matrix c12_p1 = createMatrix(m_split, p_rem, false);
+    Matrix c12_p2 = createMatrix(m_split, p_rem, false);
+    Matrix c21_p1 = createMatrix(m_rem, p_split, false);
+    Matrix c21_p2 = createMatrix(m_rem, p_split, false);
+    Matrix c22_p1 = createMatrix(m_rem, p_rem, false);
+    Matrix c22_p2 = createMatrix(m_rem, p_rem, false);
 
-    Matrix c11_p1 = recursiveMultiply(a11, b11, op_count);
-    Matrix c11_p2 = recursiveMultiply(a12, b21, op_count);
+    // 1. C11_p1 = A11 * B11
+    recursiveMultiply(c11_p1, 0, 0, A, rA, cA, B, rB, cB, m_split, k_split, p_split, op_count);
+    // 2. C11_p2 = A12 * B21
+    recursiveMultiply(c11_p2, 0, 0, A, rA, cA + k_split, B, rB + k_split, cB, m_split, k_rem, p_split, op_count);
 
-    Matrix c12_p1 = recursiveMultiply(a11, b12, op_count);
-    Matrix c12_p2 = recursiveMultiply(a12, b22, op_count);
+    // 3. C12_p1 = A11 * B12
+    recursiveMultiply(c12_p1, 0, 0, A, rA, cA, B, rB, cB + p_split, m_split, k_split, p_rem, op_count);
+    // 4. C12_p2 = A12 * B22
+    recursiveMultiply(c12_p2, 0, 0, A, rA, cA + k_split, B, rB + k_split, cB + p_split, m_split, k_rem, p_rem, op_count);
 
-    Matrix c21_p1 = recursiveMultiply(a21, b11, op_count);
-    Matrix c21_p2 = recursiveMultiply(a22, b21, op_count);
+    // 5. C21_p1 = A21 * B11
+    recursiveMultiply(c21_p1, 0, 0, A, rA + m_split, cA, B, rB, cB, m_rem, k_split, p_split, op_count);
+    // 6. C21_p2 = A22 * B21
+    recursiveMultiply(c21_p2, 0, 0, A, rA + m_split, cA + k_split, B, rB + k_split, cB, m_rem, k_rem, p_split, op_count);
 
-    Matrix c22_p1 = recursiveMultiply(a21, b12, op_count);
-    Matrix c22_p2 = recursiveMultiply(a22, b22, op_count);
+    // 7. C22_p1 = A21 * B12
+    recursiveMultiply(c22_p1, 0, 0, A, rA + m_split, cA, B, rB, cB + p_split, m_rem, k_split, p_rem, op_count);
+    // 8. C22_p2 = A22 * B22
+    recursiveMultiply(c22_p2, 0, 0, A, rA + m_split, cA + k_split, B, rB + k_split, cB + p_split, m_rem, k_rem, p_rem, op_count);
 
-    Matrix c11 = addMatrices(c11_p1, c11_p2, op_count);
-    Matrix c12 = addMatrices(c12_p1, c12_p2, op_count);
-    Matrix c21 = addMatrices(c21_p1, c21_p2, op_count);
-    Matrix c22 = addMatrices(c22_p1, c22_p2, op_count);
+    // C11 = c11_p1 + c11_p2
+    addMatrices_inplace(C, rC, cC, c11_p1, 0, 0, c11_p2, 0, 0, m_split, p_split, op_count);
 
-    Matrix C = createMatrix(m, p);
-    joinMatrices(C, c11, c12, c21, c22, m_split, p_split);
+    // C12 = c12_p1 + c12_p2
+    addMatrices_inplace(C, rC, cC + p_split, c12_p1, 0, 0, c12_p2, 0, 0, m_split, p_rem, op_count);
 
-    return C;
+    // C21 = c21_p1 + c21_p2
+    addMatrices_inplace(C, rC + m_split, cC, c21_p1, 0, 0, c21_p2, 0, 0, m_rem, p_split, op_count);
+
+    // C22 = c22_p1 + c22_p2
+    addMatrices_inplace(C, rC + m_split, cC + p_split, c22_p1, 0, 0, c22_p2, 0, 0, m_rem, p_rem, op_count);
 }
 ```
 
@@ -269,109 +301,115 @@ Matrix multiply_recursive_wrapper(const Matrix &A, const Matrix &B, unsigned lon
     }
 
     op_count = 0;
-    return recursiveMultiply(A, B, op_count);
+    size_t m = A.size();
+    size_t k = A[0].size();
+    size_t p = B[0].size();
+
+    Matrix C = createMatrix(m, p, false);
+
+    recursiveMultiply(C, 0, 0, A, 0, 0, B, 0, 0, m, k, p, op_count);
+
+    return C;
 }
 ```
 
 ### Implementacja rekurencyjna Strassena
 
 ```cpp
-Matrix strassenRecursive(const Matrix &A, const Matrix &B, unsigned long long &op_count)
+void strassenRecursive(Matrix &C, int rC, int cC,
+                       const Matrix &A, int rA, int cA,
+                       const Matrix &B, int rB, int cB,
+                       int size, unsigned long long &op_count)
 {
-    int n = A.size();
-    if (n == 1)
+    if (size <= STRASSEN_LEAF_SIZE)
     {
-        Matrix C = createMatrix(1, 1);
-        C[0][0] = A[0][0] * B[0][0];
+        iterativeMultiply_inplace(C, rC, cC, A, rA, cA, B, rB, cB, size, size, size, op_count);
+        return;
+    }
+
+    if (size == 1)
+    {
+        C[rC][cC] = A[rA][cA] * B[rB][cB];
         op_count++;
-        return C;
+        return;
     }
 
-    if (n % 2 == 0)
+    if (size % 2 == 0)
     {
-        int n_split = n / 2;
+        int n_split = size / 2;
 
-        Matrix a11 = subMatrix(A, 0, n_split, 0, n_split);
-        Matrix a12 = subMatrix(A, 0, n_split, n_split, n);
-        Matrix a21 = subMatrix(A, n_split, n, 0, n_split);
-        Matrix a22 = subMatrix(A, n_split, n, n_split, n);
+        Matrix s1 = subtractMatrices(B, rB, cB + n_split, B, rB + n_split, cB + n_split, n_split, n_split, op_count);
+        Matrix s2 = addMatrices(A, rA, cA, A, rA, cA + n_split, n_split, n_split, op_count);
+        Matrix s3 = addMatrices(A, rA + n_split, cA, A, rA + n_split, cA + n_split, n_split, n_split, op_count);
+        Matrix s4 = subtractMatrices(B, rB + n_split, cB, B, rB, cB, n_split, n_split, op_count);
+        Matrix s5 = addMatrices(A, rA, cA, A, rA + n_split, cA + n_split, n_split, n_split, op_count);
+        Matrix s6 = addMatrices(B, rB, cB, B, rB + n_split, cB + n_split, n_split, n_split, op_count);
+        Matrix s7 = subtractMatrices(A, rA, cA + n_split, A, rA + n_split, cA + n_split, n_split, n_split, op_count);
+        Matrix s8 = addMatrices(B, rB + n_split, cB, B, rB + n_split, cB + n_split, n_split, n_split, op_count);
+        Matrix s9 = subtractMatrices(A, rA, cA, A, rA + n_split, cA, n_split, n_split, op_count);
+        Matrix s10 = addMatrices(B, rB, cB, B, rB, cB + n_split, n_split, n_split, op_count);
 
-        Matrix b11 = subMatrix(B, 0, n_split, 0, n_split);
-        Matrix b12 = subMatrix(B, 0, n_split, n_split, n);
-        Matrix b21 = subMatrix(B, n_split, n, 0, n_split);
-        Matrix b22 = subMatrix(B, n_split, n, n_split, n);
+        Matrix p1 = createMatrix(n_split, n_split);
+        Matrix p2 = createMatrix(n_split, n_split);
+        Matrix p3 = createMatrix(n_split, n_split);
+        Matrix p4 = createMatrix(n_split, n_split);
+        Matrix p5 = createMatrix(n_split, n_split);
+        Matrix p6 = createMatrix(n_split, n_split);
+        Matrix p7 = createMatrix(n_split, n_split);
 
-        Matrix s1 = subtractMatrices(b12, b22, op_count);
-        Matrix s2 = addMatrices(a11, a12, op_count);
-        Matrix s3 = addMatrices(a21, a22, op_count);
-        Matrix s4 = subtractMatrices(b21, b11, op_count);
-        Matrix s5 = addMatrices(a11, a22, op_count);
-        Matrix s6 = addMatrices(b11, b22, op_count);
-        Matrix s7 = subtractMatrices(a12, a22, op_count);
-        Matrix s8 = addMatrices(b21, b22, op_count);
-        Matrix s9 = subtractMatrices(a11, a21, op_count);
-        Matrix s10 = addMatrices(b11, b12, op_count);
+        strassenRecursive(p1, 0, 0, A, rA, cA, s1, 0, 0, n_split, op_count);
+        strassenRecursive(p2, 0, 0, s2, 0, 0, B, rB + n_split, cB + n_split, n_split, op_count);
+        strassenRecursive(p3, 0, 0, s3, 0, 0, B, rB, cB, n_split, op_count);
+        strassenRecursive(p4, 0, 0, A, rA + n_split, cA + n_split, s4, 0, 0, n_split, op_count);
+        strassenRecursive(p5, 0, 0, s5, 0, 0, s6, 0, 0, n_split, op_count);
+        strassenRecursive(p6, 0, 0, s7, 0, 0, s8, 0, 0, n_split, op_count);
+        strassenRecursive(p7, 0, 0, s9, 0, 0, s10, 0, 0, n_split, op_count);
 
-        Matrix p1 = strassenRecursive(a11, s1, op_count);
-        Matrix p2 = strassenRecursive(s2, b22, op_count);
-        Matrix p3 = strassenRecursive(s3, b11, op_count);
-        Matrix p4 = strassenRecursive(a22, s4, op_count);
-        Matrix p5 = strassenRecursive(s5, s6, op_count);
-        Matrix p6 = strassenRecursive(s7, s8, op_count);
-        Matrix p7 = strassenRecursive(s9, s10, op_count);
+        addMatrices_inplace(C, rC, cC, p5, 0, 0, p4, 0, 0, n_split, n_split, op_count);
+        subtractMatrices_inplace(C, rC, cC, C, rC, cC, p2, 0, 0, n_split, n_split, op_count);
+        addMatrices_inplace(C, rC, cC, C, rC, cC, p6, 0, 0, n_split, n_split, op_count);
 
-        Matrix c11_p1 = addMatrices(p5, p4, op_count);
-        Matrix c11_p2 = subtractMatrices(c11_p1, p2, op_count);
-        Matrix c11 = addMatrices(c11_p2, p6, op_count);
+        addMatrices_inplace(C, rC, cC + n_split, p1, 0, 0, p2, 0, 0, n_split, n_split, op_count);
+        addMatrices_inplace(C, rC + n_split, cC, p3, 0, 0, p4, 0, 0, n_split, n_split, op_count);
 
-        Matrix c12 = addMatrices(p1, p2, op_count);
-
-        Matrix c21 = addMatrices(p3, p4, op_count);
-
-        Matrix c22_p1 = addMatrices(p5, p1, op_count);
-        Matrix c22_p2 = subtractMatrices(c22_p1, p3, op_count);
-        Matrix c22 = subtractMatrices(c22_p2, p7, op_count);
-
-        Matrix C = createMatrix(n, n);
-        joinMatrices(C, c11, c12, c21, c22, n_split, n_split);
-
-        return C;
+        addMatrices_inplace(C, rC + n_split, cC + n_split, p5, 0, 0, p1, 0, 0, n_split, n_split, op_count);
+        subtractMatrices_inplace(C, rC + n_split, cC + n_split, C, rC + n_split, cC + n_split, p3, 0, 0, n_split, n_split, op_count);
+        subtractMatrices_inplace(C, rC + n_split, cC + n_split, C, rC + n_split, cC + n_split, p7, 0, 0, n_split, n_split, op_count);
     }
-
     else
     {
-        int n1 = n - 1;
+        int n1 = size - 1;
 
-        Matrix A11 = subMatrix(A, 0, n1, 0, n1);
-        Matrix a12 = subMatrix(A, 0, n1, n1, n);
-        Matrix a21 = subMatrix(A, n1, n, 0, n1);
-        Matrix a22 = subMatrix(A, n1, n, n1, n);
+        strassenRecursive(C, rC, cC, A, rA, cA, B, rB, cB, n1, op_count);
 
-        Matrix B11 = subMatrix(B, 0, n1, 0, n1);
-        Matrix b12 = subMatrix(B, 0, n1, n1, n);
-        Matrix b21 = subMatrix(B, n1, n, 0, n1);
-        Matrix b22 = subMatrix(B, n1, n, n1, n);
+        Matrix C11_p2 = createMatrix(n1, n1);
+        iterativeMultiply_inplace(C11_p2, 0, 0, A, rA, cA + n1, B, rB + n1, cB, n1, 1, n1, op_count);
 
-        Matrix C11_p1 = strassenRecursive(A11, B11, op_count);
-        Matrix C11_p2 = iterativeMultiply(a12, b21, op_count);
-        Matrix C11 = addMatrices(C11_p1, C11_p2, op_count);
+        addMatrices_inplace(C, rC, cC, C, rC, cC, C11_p2, 0, 0, n1, n1, op_count);
 
-        Matrix C12_p1 = iterativeMultiply(A11, b12, op_count);
-        Matrix C12_p2 = iterativeMultiply(a12, b22, op_count);
-        Matrix C12 = addMatrices(C12_p1, C12_p2, op_count);
+        iterativeMultiply_inplace(C, rC, cC + n1, A, rA, cA, B, rB, cB + n1, n1, n1, 1, op_count);
 
-        Matrix C21_p1 = iterativeMultiply(a21, B11, op_count);
-        Matrix C21_p2 = iterativeMultiply(a22, b21, op_count);
-        Matrix C21 = addMatrices(C21_p1, C21_p2, op_count);
+        Matrix C12_p2 = createMatrix(n1, 1);
 
-        Matrix C22_p1 = iterativeMultiply(a21, b12, op_count);
-        Matrix C22_p2 = iterativeMultiply(a22, b22, op_count);
-        Matrix C22 = addMatrices(C22_p1, C22_p2, op_count);
+        iterativeMultiply_inplace(C12_p2, 0, 0, A, rA, cA + n1, B, rB + n1, cB + n1, n1, 1, 1, op_count);
 
-        Matrix C = createMatrix(n, n);
-        joinMatrices(C, C11, C12, C21, C22, n1, n1);
+        addMatrices_inplace(C, rC, cC + n1, C, rC, cC + n1, C12_p2, 0, 0, n1, 1, op_count);
 
-        return C;
+        iterativeMultiply_inplace(C, rC + n1, cC, A, rA + n1, cA, B, rB, cB, 1, n1, n1, op_count);
+
+        Matrix C21_p2 = createMatrix(1, n1);
+
+        iterativeMultiply_inplace(C21_p2, 0, 0, A, rA + n1, cA + n1, B, rB + n1, cB, 1, 1, n1, op_count);
+
+        addMatrices_inplace(C, rC + n1, cC, C, rC + n1, cC, C21_p2, 0, 0, 1, n1, op_count);
+
+        iterativeMultiply_inplace(C, rC + n1, cC + n1, A, rA + n1, cA, B, rB, cB + n1, 1, n1, 1, op_count);
+
+        Matrix C22_p2 = createMatrix(1, 1);
+        iterativeMultiply_inplace(C22_p2, 0, 0, A, rA + n1, cA + n1, B, rB + n1, cB + n1, 1, 1, 1, op_count);
+
+        C[rC + n1][cC + n1] += C22_p2[0][0];
+        op_count++;
     }
 }
 ```
@@ -385,13 +423,18 @@ Matrix multiply_strassen_wrapper(const Matrix &A, const Matrix &B, unsigned long
     {
         throw std::invalid_argument("Incompatible matrix dimensions for multiplication.");
     }
-    if (A.size() != A[0].size() || B.size() != B[0].size() || A.size() != B.size())
+    size_t n = A.size();
+    if (n != A[0].size() || n != B.size() || n != B[0].size())
     {
         throw std::invalid_argument("Input matrices are not square and of the same size N.");
     }
 
     op_count = 0;
-    return strassenRecursive(A, B, op_count);
+    Matrix C = createMatrix(n, n);
+
+    strassenRecursive(C, 0, 0, A, 0, 0, B, 0, 0, n, op_count);
+
+    return C;
 }
 ```
 
