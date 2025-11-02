@@ -1,9 +1,9 @@
 Size,Algorithm,Operations,Duration_ms,Memory_kb
-2,Recursive Binet,12,0.0007,4592
-3,Recursive Binet,45,0.0125,4592
-5,Recursive Binet,225,0.0338,4596
-7,Recursive Binet,637,0.0876,4608
-20,Recursive Binet,15600,0.7002,4656
-50,Recursive Binet,247500,20.156,4844
-100,Recursive Binet,1990000,143.054,5492
-200,Recursive Binet,15960000,1196.93,7716
+2,Recursive Binet,12,0.0007,4596
+3,Recursive Binet,45,0.0135,4596
+5,Recursive Binet,225,0.0485,4604
+7,Recursive Binet,637,0.0544,4612
+20,Recursive Binet,15600,0.6829,4660
+50,Recursive Binet,247500,19.8456,4844
+100,Recursive Binet,1990000,156.239,5488
+200,Recursive Binet,15960000,1167.41,7712

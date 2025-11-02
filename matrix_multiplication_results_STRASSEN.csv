@@ -1,9 +1,9 @@
 Size,Algorithm,Operations,Duration_ms,Memory_kb
-2,Strassen,12,0.0075,5300
-3,Strassen,45,0.0033,5316
-5,Strassen,225,0.0089,5320
-7,Strassen,637,0.0125,5320
-20,Strassen,15100,0.5682,5380
-50,Strassen,216553,24.0966,5616
-100,Strassen,1560871,194.809,6344
-200,Strassen,11106097,1773.96,9120
+2,Strassen,25,0.0155,-8
+3,Strassen,58,0.0071,-8
+5,Strassen,360,0.039,-4
+7,Strassen,809,0.0848,8
+20,Strassen,22590,1.4259,60
+50,Strassen,280841,15.8356,132
+100,Strassen,2010887,100.663,440
+200,Strassen,14256209,690.819,1332
