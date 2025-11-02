@@ -41,11 +41,12 @@ Matrix multiply_ai_recursive(const Matrix &A, const Matrix &B, unsigned long lon
 Matrix createMatrix(int rows, int cols, bool random)
 {
     Matrix mat(rows, std::vector<double>(cols, 0.0));
-    if (random)
+    if (random && rows > 0 && cols > 0)
     {
         unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
         std::mt19937 gen(seed);
-        std::uniform_real_distribution<double> dis(0.0, 1.0);
+        std::uniform_real_distribution<double> dis(0.00000001, 1.0);
+
         for (int i = 0; i < rows; ++i)
         {
             for (int j = 0; j < cols; ++j)
