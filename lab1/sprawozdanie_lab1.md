@@ -338,15 +338,25 @@ void strassenRecursive(Matrix &C, int rC, int cC,
     {
         int n_split = size / 2;
 
+        // s1 = B12 - B22  (B: rows rB.., columns cB+n_split..)
         Matrix s1 = subtractMatrices(B, rB, cB + n_split, B, rB + n_split, cB + n_split, n_split, n_split, op_count);
+        // s2 = A11 + A12  (A: rows rA.., columns cA..)
         Matrix s2 = addMatrices(A, rA, cA, A, rA, cA + n_split, n_split, n_split, op_count);
+        // s3 = A21 + A22
         Matrix s3 = addMatrices(A, rA + n_split, cA, A, rA + n_split, cA + n_split, n_split, n_split, op_count);
+        // s4 = B21 - B11
         Matrix s4 = subtractMatrices(B, rB + n_split, cB, B, rB, cB, n_split, n_split, op_count);
+        // s5 = A11 + A22
         Matrix s5 = addMatrices(A, rA, cA, A, rA + n_split, cA + n_split, n_split, n_split, op_count);
+        // s6 = B11 + B22
         Matrix s6 = addMatrices(B, rB, cB, B, rB + n_split, cB + n_split, n_split, n_split, op_count);
+        // s7 = A12 - A22
         Matrix s7 = subtractMatrices(A, rA, cA + n_split, A, rA + n_split, cA + n_split, n_split, n_split, op_count);
+        // s8 = B21 + B22
         Matrix s8 = addMatrices(B, rB + n_split, cB, B, rB + n_split, cB + n_split, n_split, n_split, op_count);
+        // s9 = A11 - A21
         Matrix s9 = subtractMatrices(A, rA, cA, A, rA + n_split, cA, n_split, n_split, op_count);
+        // s10 = B11 + B12
         Matrix s10 = addMatrices(B, rB, cB, B, rB, cB + n_split, n_split, n_split, op_count);
 
         Matrix p1 = createMatrix(n_split, n_split);
@@ -357,52 +367,69 @@ void strassenRecursive(Matrix &C, int rC, int cC,
         Matrix p6 = createMatrix(n_split, n_split);
         Matrix p7 = createMatrix(n_split, n_split);
 
+        // p1 = A11 * s1   (A11 * (B12 - B22))
         strassenRecursive(p1, 0, 0, A, rA, cA, s1, 0, 0, n_split, op_count);
+        // p2 = s2 * B22   ((A11 + A12) * B22)
         strassenRecursive(p2, 0, 0, s2, 0, 0, B, rB + n_split, cB + n_split, n_split, op_count);
+        // p3 = s3 * B11   ((A21 + A22) * B11)
         strassenRecursive(p3, 0, 0, s3, 0, 0, B, rB, cB, n_split, op_count);
+        // p4 = A22 * s4   (A22 * (B21 - B11))
         strassenRecursive(p4, 0, 0, A, rA + n_split, cA + n_split, s4, 0, 0, n_split, op_count);
+        // p5 = s5 * s6    ((A11 + A22) * (B11 + B22))
         strassenRecursive(p5, 0, 0, s5, 0, 0, s6, 0, 0, n_split, op_count);
+        // p6 = s7 * s8    ((A12 - A22) * (B21 + B22))
         strassenRecursive(p6, 0, 0, s7, 0, 0, s8, 0, 0, n_split, op_count);
+        // p7 = s9 * s10   ((A11 - A21) * (B11 + B12))
         strassenRecursive(p7, 0, 0, s9, 0, 0, s10, 0, 0, n_split, op_count);
 
-        addMatrices_inplace(C, rC, cC, p5, 0, 0, p4, 0, 0, n_split, n_split, op_count);
-        subtractMatrices_inplace(C, rC, cC, C, rC, cC, p2, 0, 0, n_split, n_split, op_count);
-        addMatrices_inplace(C, rC, cC, C, rC, cC, p6, 0, 0, n_split, n_split, op_count);
+        // C11 = p5 + p4 - p2 + p6
+        addMatrices_inplace(C, rC, cC, p5, 0, 0, p4, 0, 0, n_split, n_split, op_count);       // C11 += p5 + p4
+        subtractMatrices_inplace(C, rC, cC, C, rC, cC, p2, 0, 0, n_split, n_split, op_count); // C11 -= p2
+        addMatrices_inplace(C, rC, cC, C, rC, cC, p6, 0, 0, n_split, n_split, op_count);      // C11 += p6
 
-        addMatrices_inplace(C, rC, cC + n_split, p1, 0, 0, p2, 0, 0, n_split, n_split, op_count);
-        addMatrices_inplace(C, rC + n_split, cC, p3, 0, 0, p4, 0, 0, n_split, n_split, op_count);
+        // C12 = p1 + p2
+        addMatrices_inplace(C, rC, cC + n_split, p1, 0, 0, p2, 0, 0, n_split, n_split, op_count); // C12 = p1 + p2
+        // C21 = p3 + p4
+        addMatrices_inplace(C, rC + n_split, cC, p3, 0, 0, p4, 0, 0, n_split, n_split, op_count); // C21 = p3 + p4
 
-        addMatrices_inplace(C, rC + n_split, cC + n_split, p5, 0, 0, p1, 0, 0, n_split, n_split, op_count);
-        subtractMatrices_inplace(C, rC + n_split, cC + n_split, C, rC + n_split, cC + n_split, p3, 0, 0, n_split, n_split, op_count);
-        subtractMatrices_inplace(C, rC + n_split, cC + n_split, C, rC + n_split, cC + n_split, p7, 0, 0, n_split, n_split, op_count);
+        // C22 = p5 + p1 - p3 - p7
+        addMatrices_inplace(C, rC + n_split, cC + n_split, p5, 0, 0, p1, 0, 0, n_split, n_split, op_count);                           // C22 += p5 + p1
+        subtractMatrices_inplace(C, rC + n_split, cC + n_split, C, rC + n_split, cC + n_split, p3, 0, 0, n_split, n_split, op_count); // C22 -= p3
+        subtractMatrices_inplace(C, rC + n_split, cC + n_split, C, rC + n_split, cC + n_split, p7, 0, 0, n_split, n_split, op_count); // C22 -= p7
     }
     else
     {
         int n1 = size - 1;
 
+        // recursion (n-1)x(n-1) top left A11*B11
         strassenRecursive(C, rC, cC, A, rA, cA, B, rB, cB, n1, op_count);
 
         Matrix C11_p2 = createMatrix(n1, n1);
+        // extra term: A11_right * B_bottomLeft
         iterativeMultiply_inplace(C11_p2, 0, 0, A, rA, cA + n1, B, rB + n1, cB, n1, 1, n1, op_count);
 
+        // add to C11
         addMatrices_inplace(C, rC, cC, C, rC, cC, C11_p2, 0, 0, n1, n1, op_count);
 
+        // C12 (top-right) += A11 * B_rightCol
         iterativeMultiply_inplace(C, rC, cC + n1, A, rA, cA, B, rB, cB + n1, n1, n1, 1, op_count);
 
         Matrix C12_p2 = createMatrix(n1, 1);
-
+        // additional for C12: A11_right * B_bottomRight
         iterativeMultiply_inplace(C12_p2, 0, 0, A, rA, cA + n1, B, rB + n1, cB + n1, n1, 1, 1, op_count);
 
         addMatrices_inplace(C, rC, cC + n1, C, rC, cC + n1, C12_p2, 0, 0, n1, 1, op_count);
 
+        // C21 (bottom-left) += A_bottomRow * B_left
         iterativeMultiply_inplace(C, rC + n1, cC, A, rA + n1, cA, B, rB, cB, 1, n1, n1, op_count);
 
         Matrix C21_p2 = createMatrix(1, n1);
-
+        // additional for C21: A_bottomRight * B_topLeftColumn
         iterativeMultiply_inplace(C21_p2, 0, 0, A, rA + n1, cA + n1, B, rB + n1, cB, 1, 1, n1, op_count);
 
         addMatrices_inplace(C, rC + n1, cC, C, rC + n1, cC, C21_p2, 0, 0, 1, n1, op_count);
 
+        // C22 (bottom-right) += A_bottomRow * B_rightCol
         iterativeMultiply_inplace(C, rC + n1, cC + n1, A, rA + n1, cA, B, rB, cB + n1, 1, n1, 1, op_count);
 
         Matrix C22_p2 = createMatrix(1, 1);
@@ -443,242 +470,228 @@ Matrix multiply_strassen_wrapper(const Matrix &A, const Matrix &B, unsigned long
 - Funkcja bazowa mnożąca macierz 4×5 przez 5×5
 
 ```cpp
-Matrix matrix_ai(const Matrix &A, const Matrix &B, unsigned long long &op_count)
+void matrix_ai_inplace(Matrix &C, int rC, int cC,
+                       const Matrix &A, int rA, int cA,
+                       const Matrix &B, int rB, int cB,
+                       unsigned long long &op_count)
 {
-    assert(A.size() == 4 && A[0].size() == 5 && "Matrix A must be 4x5");
-    assert(B.size() == 5 && B[0].size() == 5 && "Matrix B must be 5x5");
 
-    op_count = 0;
     std::vector<double> H(76);
 
-    // Compute H values (as in article)
-    H[0] = A[2][1] * (-B[1][0] - B[1][4] - B[2][0]);
+    H[0] = A[rA + 2][cA + 1] * (-B[rB + 1][cB + 0] - B[rB + 1][cB + 4] - B[rB + 2][cB + 0]);
     op_count += 3;
-    H[1] = (A[1][1] + A[1][4] - A[2][4]) * (-B[1][4] - B[4][0]);
+    H[1] = (A[rA + 1][cA + 1] + A[rA + 1][cA + 4] - A[rA + 2][cA + 4]) * (-B[rB + 1][cB + 4] - B[rB + 4][cB + 0]);
     op_count += 4;
-    H[2] = (-A[2][0] - A[3][0] + A[3][1]) * (-B[0][0] + B[1][4]);
+    H[2] = (-A[rA + 2][cA + 0] - A[rA + 3][cA + 0] + A[rA + 3][cA + 1]) * (-B[rB + 0][cB + 0] + B[rB + 1][cB + 4]);
     op_count += 4;
-    H[3] = (A[0][1] + A[0][3] + A[2][3]) * (-B[1][4] - B[3][0]);
+    H[3] = (A[rA + 0][cA + 1] + A[rA + 0][cA + 3] + A[rA + 2][cA + 3]) * (-B[rB + 1][cB + 4] - B[rB + 3][cB + 0]);
     op_count += 4;
-    H[4] = (A[0][4] + A[1][1] + A[1][4]) * (-B[1][3] + B[4][0]);
+    H[4] = (A[rA + 0][cA + 4] + A[rA + 1][cA + 1] + A[rA + 1][cA + 4]) * (-B[rB + 1][cB + 3] + B[rB + 4][cB + 0]);
     op_count += 4;
-    H[5] = (-A[1][1] - A[1][4] - A[3][4]) * (B[1][2] + B[4][0]);
+    H[5] = (-A[rA + 1][cA + 1] - A[rA + 1][cA + 4] - A[rA + 3][cA + 4]) * (B[rB + 1][cB + 2] + B[rB + 4][cB + 0]);
     op_count += 4;
-    H[6] = (-A[0][0] + A[3][0] - A[3][1]) * (B[0][0] + B[1][3]);
+    H[6] = (-A[rA + 0][cA + 0] + A[rA + 3][cA + 0] - A[rA + 3][cA + 1]) * (B[rB + 0][cB + 0] + B[rB + 1][cB + 3]);
     op_count += 4;
-    H[7] = (A[2][1] - A[2][2] - A[3][2]) * (-B[1][2] + B[2][0]);
+    H[7] = (A[rA + 2][cA + 1] - A[rA + 2][cA + 2] - A[rA + 3][cA + 2]) * (-B[rB + 1][cB + 2] + B[rB + 2][cB + 0]);
     op_count += 4;
-    H[8] = (-A[0][1] - A[0][3] + A[3][3]) * (B[1][2] + B[3][0]);
+    H[8] = (-A[rA + 0][cA + 1] - A[rA + 0][cA + 3] + A[rA + 3][cA + 3]) * (B[rB + 1][cB + 2] + B[rB + 3][cB + 0]);
     op_count += 4;
-    H[9] = (A[1][1] + A[1][4]) * B[4][0];
+    H[9] = (A[rA + 1][cA + 1] + A[rA + 1][cA + 4]) * B[rB + 4][cB + 0];
     op_count += 2;
-    H[10] = (-A[1][0] - A[3][0] + A[3][1]) * (-B[0][0] + B[1][1]);
+    H[10] = (-A[rA + 1][cA + 0] - A[rA + 3][cA + 0] + A[rA + 3][cA + 1]) * (-B[rB + 0][cB + 0] + B[rB + 1][cB + 1]);
     op_count += 4;
-    H[11] = (A[3][0] - A[3][1]) * B[0][0];
+    H[11] = (A[rA + 3][cA + 0] - A[rA + 3][cA + 1]) * B[rB + 0][cB + 0];
     op_count += 2;
-    H[12] = (A[0][1] + A[0][3] + A[1][3]) * (B[1][1] + B[3][0]);
+    H[12] = (A[rA + 0][cA + 1] + A[rA + 0][cA + 3] + A[rA + 1][cA + 3]) * (B[rB + 1][cB + 1] + B[rB + 3][cB + 0]);
     op_count += 4;
-    H[13] = (A[0][2] - A[2][1] + A[2][2]) * (B[1][3] + B[2][0]);
+    H[13] = (A[rA + 0][cA + 2] - A[rA + 2][cA + 1] + A[rA + 2][cA + 2]) * (B[rB + 1][cB + 3] + B[rB + 2][cB + 0]);
     op_count += 4;
-    H[14] = (-A[0][1] - A[0][3]) * B[3][0];
+    H[14] = (-A[rA + 0][cA + 1] - A[rA + 0][cA + 3]) * B[rB + 3][cB + 0];
     op_count += 2;
-    H[15] = (-A[2][1] + A[2][2]) * B[2][0];
+    H[15] = (-A[rA + 2][cA + 1] + A[rA + 2][cA + 2]) * B[rB + 2][cB + 0];
     op_count += 2;
-    H[16] = (A[0][1] + A[0][3] - A[1][0] + A[1][1] - A[1][2] + A[1][3] - A[2][1] + A[2][2] - A[3][0] + A[3][1]) * B[1][1];
+    H[16] = (A[rA + 0][cA + 1] + A[rA + 0][cA + 3] - A[rA + 1][cA + 0] + A[rA + 1][cA + 1] - A[rA + 1][cA + 2] + A[rA + 1][cA + 3] - A[rA + 2][cA + 1] + A[rA + 2][cA + 2] - A[rA + 3][cA + 0] + A[rA + 3][cA + 1]) * B[rB + 1][cB + 1];
     op_count += 10;
-    H[17] = A[1][0] * (B[0][0] + B[0][1] + B[4][1]);
+    H[17] = A[rA + 1][cA + 0] * (B[rB + 0][cB + 0] + B[rB + 0][cB + 1] + B[rB + 4][cB + 1]);
     op_count += 3;
-    H[18] = -A[1][2] * (B[2][0] + B[2][1] + B[4][1]);
+    H[18] = -A[rA + 1][cA + 2] * (B[rB + 2][cB + 0] + B[rB + 2][cB + 1] + B[rB + 4][cB + 1]);
     op_count += 3;
-    H[19] = (-A[0][4] + A[1][0] + A[1][2] - A[1][4]) * (-B[0][0] - B[0][1] + B[0][3] - B[4][1]);
+    H[19] = (-A[rA + 0][cA + 4] + A[rA + 1][cA + 0] + A[rA + 1][cA + 2] - A[rA + 1][cA + 4]) * (-B[rB + 0][cB + 0] - B[rB + 0][cB + 1] + B[rB + 0][cB + 3] - B[rB + 4][cB + 1]);
     op_count += 8;
-    H[20] = (A[1][0] + A[1][2] - A[1][4]) * B[4][1];
+    H[20] = (A[rA + 1][cA + 0] + A[rA + 1][cA + 2] - A[rA + 1][cA + 4]) * B[rB + 4][cB + 1];
     op_count += 3;
-    H[21] = (A[0][2] - A[0][3] - A[1][3]) * (B[0][0] + B[0][1] - B[0][3] - B[2][0] - B[2][1] + B[2][3] + B[3][3]);
+    H[21] = (A[rA + 0][cA + 2] - A[rA + 0][cA + 3] - A[rA + 1][cA + 3]) * (B[rB + 0][cB + 0] + B[rB + 0][cB + 1] - B[rB + 0][cB + 3] - B[rB + 2][cB + 0] - B[rB + 2][cB + 1] + B[rB + 2][cB + 3] + B[rB + 3][cB + 3]);
     op_count += 9;
-    H[22] = A[0][2] * (-B[2][0] + B[2][3] + B[3][3]);
+    H[22] = A[rA + 0][cA + 2] * (-B[rB + 2][cB + 0] + B[rB + 2][cB + 3] + B[rB + 3][cB + 3]);
     op_count += 3;
-    H[23] = A[0][4] * (-B[3][3] - B[4][0] + B[4][3]);
+    H[23] = A[rA + 0][cA + 4] * (-B[rB + 3][cB + 3] - B[rB + 4][cB + 0] + B[rB + 4][cB + 3]);
     op_count += 3;
-    H[24] = -A[0][0] * (B[0][0] - B[0][3]);
+    H[24] = -A[rA + 0][cA + 0] * (B[rB + 0][cB + 0] - B[rB + 0][cB + 3]);
     op_count += 2;
-    H[25] = (-A[0][2] + A[0][3] + A[0][4]) * B[3][3];
+    H[25] = (-A[rA + 0][cA + 2] + A[rA + 0][cA + 3] + A[rA + 0][cA + 4]) * B[rB + 3][cB + 3];
     op_count += 3;
-    H[26] = (A[0][2] - A[2][0] + A[2][2]) * (B[0][0] - B[0][3] + B[0][4] + B[2][4]);
+    H[26] = (A[rA + 0][cA + 2] - A[rA + 2][cA + 0] + A[rA + 2][cA + 2]) * (B[rB + 0][cB + 0] - B[rB + 0][cB + 3] + B[rB + 0][cB + 4] + B[rB + 2][cB + 4]);
     op_count += 6;
-    H[27] = -A[2][3] * (-B[2][4] - B[3][0] - B[3][4]);
+    H[27] = -A[rA + 2][cA + 3] * (-B[rB + 2][cB + 4] - B[rB + 3][cB + 0] - B[rB + 3][cB + 4]);
     op_count += 3;
-    H[28] = A[2][0] * (B[0][0] + B[0][4] + B[2][4]);
+    H[28] = A[rA + 2][cA + 0] * (B[rB + 0][cB + 0] + B[rB + 0][cB + 4] + B[rB + 2][cB + 4]);
     op_count += 3;
-    H[29] = (A[2][0] - A[2][2] + A[2][3]) * B[2][4];
+    H[29] = (A[rA + 2][cA + 0] - A[rA + 2][cA + 2] + A[rA + 2][cA + 3]) * B[rB + 2][cB + 4];
     op_count += 3;
-    H[30] = (-A[0][3] - A[0][4] - A[2][3]) * (-B[3][3] - B[4][0] + B[4][3] - B[4][4]);
+    H[30] = (-A[rA + 0][cA + 3] - A[rA + 0][cA + 4] - A[rA + 2][cA + 3]) * (-B[rB + 3][cB + 3] - B[rB + 4][cB + 0] + B[rB + 4][cB + 3] - B[rB + 4][cB + 4]);
     op_count += 7;
-    H[31] = (A[1][0] + A[3][0] + A[3][3]) * (B[0][2] - B[3][0] - B[3][1] - B[3][2]);
+    H[31] = (A[rA + 1][cA + 0] + A[rA + 3][cA + 0] + A[rA + 3][cA + 3]) * (B[rB + 0][cB + 2] - B[rB + 3][cB + 0] - B[rB + 3][cB + 1] - B[rB + 3][cB + 2]);
     op_count += 6;
-    H[32] = A[3][2] * (-B[2][0] - B[2][2]);
+    H[32] = A[rA + 3][cA + 2] * (-B[rB + 2][cB + 0] - B[rB + 2][cB + 2]);
     op_count += 2;
-    H[33] = A[3][3] * (-B[0][2] + B[3][0] + B[3][2]);
+    H[33] = A[rA + 3][cA + 3] * (-B[rB + 0][cB + 2] + B[rB + 3][cB + 0] + B[rB + 3][cB + 2]);
     op_count += 3;
-    H[34] = -A[3][4] * (B[0][2] + B[4][0] + B[4][2]);
+    H[34] = -A[rA + 3][cA + 4] * (B[rB + 0][cB + 2] + B[rB + 4][cB + 0] + B[rB + 4][cB + 2]);
     op_count += 3;
-    H[35] = (A[1][2] - A[1][4] - A[3][4]) * (B[2][0] + B[2][1] + B[2][2] + B[4][1]);
+    H[35] = (A[rA + 1][cA + 2] - A[rA + 1][cA + 4] - A[rA + 3][cA + 4]) * (B[rB + 2][cB + 0] + B[rB + 2][cB + 1] + B[rB + 2][cB + 2] + B[rB + 4][cB + 1]);
     op_count += 6;
-    H[36] = (-A[3][0] - A[3][3] + A[3][4]) * B[0][2];
+    H[36] = (-A[rA + 3][cA + 0] - A[rA + 3][cA + 3] + A[rA + 3][cA + 4]) * B[rB + 0][cB + 2];
     op_count += 3;
-    H[37] = (-A[1][2] - A[2][0] + A[2][2] - A[2][3]) * (B[2][4] + B[3][0] + B[3][1] + B[3][4]);
+    H[37] = (-A[rA + 1][cA + 2] - A[rA + 2][cA + 0] + A[rA + 2][cA + 2] - A[rA + 2][cA + 3]) * (B[rB + 2][cB + 4] + B[rB + 3][cB + 0] + B[rB + 3][cB + 1] + B[rB + 3][cB + 4]);
     op_count += 7;
-    H[38] = (-A[2][0] - A[3][0] - A[3][3] + A[3][4]) * (B[0][2] + B[4][0] + B[4][2] + B[4][4]);
+    H[38] = (-A[rA + 2][cA + 0] - A[rA + 3][cA + 0] - A[rA + 3][cA + 3] + A[rA + 3][cA + 4]) * (B[rB + 0][cB + 2] + B[rB + 4][cB + 0] + B[rB + 4][cB + 2] + B[rB + 4][cB + 4]);
     op_count += 7;
-    H[39] = (-A[0][2] + A[0][3] + A[0][4] - A[3][3]) * (-B[2][0] - B[2][2] + B[2][3] + B[3][3]);
+    H[39] = (-A[rA + 0][cA + 2] + A[rA + 0][cA + 3] + A[rA + 0][cA + 4] - A[rA + 3][cA + 3]) * (-B[rB + 2][cB + 0] - B[rB + 2][cB + 2] + B[rB + 2][cB + 3] + B[rB + 3][cB + 3]);
     op_count += 7;
-    H[40] = (-A[0][0] + A[3][0] - A[3][4]) * (B[0][2] + B[2][0] + B[2][2] - B[2][3] + B[4][0] + B[4][2] - B[4][3]);
+    H[40] = (-A[rA + 0][cA + 0] + A[rA + 3][cA + 0] - A[rA + 3][cA + 4]) * (B[rB + 0][cB + 2] + B[rB + 2][cB + 0] + B[rB + 2][cB + 2] - B[rB + 2][cB + 3] + B[rB + 4][cB + 0] + B[rB + 4][cB + 2] - B[rB + 4][cB + 3]);
     op_count += 9;
-    H[41] = (-A[1][0] + A[1][4] - A[2][4]) * (-B[0][0] - B[0][1] - B[0][4] + B[3][0] + B[3][1] + B[3][4] - B[4][1]);
+    H[41] = (-A[rA + 1][cA + 0] + A[rA + 1][cA + 4] - A[rA + 2][cA + 4]) * (-B[rB + 0][cB + 0] - B[rB + 0][cB + 1] - B[rB + 0][cB + 4] + B[rB + 3][cB + 0] + B[rB + 3][cB + 1] + B[rB + 3][cB + 4] - B[rB + 4][cB + 1]);
     op_count += 10;
-    H[42] = A[1][3] * (B[3][0] + B[3][1]);
+    H[42] = A[rA + 1][cA + 3] * (B[rB + 3][cB + 0] + B[rB + 3][cB + 1]);
     op_count += 2;
-    H[43] = (A[1][2] + A[2][1] - A[2][2]) * (B[1][1] - B[2][0]);
+    H[43] = (A[rA + 1][cA + 2] + A[rA + 2][cA + 1] - A[rA + 2][cA + 2]) * (B[rB + 1][cB + 1] - B[rB + 2][cB + 0]);
     op_count += 4;
-    H[44] = (-A[2][2] + A[2][3] - A[3][2]) * (B[2][4] + B[3][0] + B[3][2] + B[3][4] + B[4][0] + B[4][2] + B[4][4]);
+    H[44] = (-A[rA + 2][cA + 2] + A[rA + 2][cA + 3] - A[rA + 3][cA + 2]) * (B[rB + 2][cB + 4] + B[rB + 3][cB + 0] + B[rB + 3][cB + 2] + B[rB + 3][cB + 4] + B[rB + 4][cB + 0] + B[rB + 4][cB + 2] + B[rB + 4][cB + 4]);
     op_count += 9;
-    H[45] = -A[2][4] * (-B[4][0] - B[4][4]);
+    H[45] = -A[rA + 2][cA + 4] * (-B[rB + 4][cB + 0] - B[rB + 4][cB + 4]);
     op_count += 2;
-    H[46] = (A[1][0] - A[1][4] - A[2][0] + A[2][4]) * (B[0][0] + B[0][1] + B[0][4] - B[3][0] - B[3][1] - B[3][4]);
+    H[46] = (A[rA + 1][cA + 0] - A[rA + 1][cA + 4] - A[rA + 2][cA + 0] + A[rA + 2][cA + 4]) * (B[rB + 0][cB + 0] + B[rB + 0][cB + 1] + B[rB + 0][cB + 4] - B[rB + 3][cB + 0] - B[rB + 3][cB + 1] - B[rB + 3][cB + 4]);
     op_count += 9;
-    H[47] = (-A[1][2] + A[2][2]) * (B[1][1] + B[2][1] + B[2][4] + B[3][0] + B[3][1] + B[3][4]);
+    H[47] = (-A[rA + 1][cA + 2] + A[rA + 2][cA + 2]) * (B[rB + 1][cB + 1] + B[rB + 2][cB + 1] + B[rB + 2][cB + 4] + B[rB + 3][cB + 0] + B[rB + 3][cB + 1] + B[rB + 3][cB + 4]);
     op_count += 7;
-    H[48] = (-A[0][0] - A[0][2] + A[0][3] + A[0][4] - A[1][0] - A[1][2] + A[1][3] + A[1][4]) * (-B[0][0] - B[0][1] + B[0][3]);
+    H[48] = (-A[rA + 0][cA + 0] - A[rA + 0][cA + 2] + A[rA + 0][cA + 3] + A[rA + 0][cA + 4] - A[rA + 1][cA + 0] - A[rA + 1][cA + 2] + A[rA + 1][cA + 3] + A[rA + 1][cA + 4]) * (-B[rB + 0][cB + 0] - B[rB + 0][cB + 1] + B[rB + 0][cB + 3]);
     op_count += 11;
-    H[49] = (-A[0][3] - A[1][3]) * (B[1][1] - B[2][0] - B[2][1] + B[2][3] - B[3][1] + B[3][3]);
+    H[49] = (-A[rA + 0][cA + 3] - A[rA + 1][cA + 3]) * (B[rB + 1][cB + 1] - B[rB + 2][cB + 0] - B[rB + 2][cB + 1] + B[rB + 2][cB + 3] - B[rB + 3][cB + 1] + B[rB + 3][cB + 3]);
     op_count += 7;
-    H[50] = A[1][1] * (B[1][0] + B[1][1] - B[4][0]);
+    H[50] = A[rA + 1][cA + 1] * (B[rB + 1][cB + 0] + B[rB + 1][cB + 1] - B[rB + 4][cB + 0]);
     op_count += 3;
-    H[51] = A[3][1] * (B[0][0] + B[1][0] + B[1][2]);
+    H[51] = A[rA + 3][cA + 1] * (B[rB + 0][cB + 0] + B[rB + 1][cB + 0] + B[rB + 1][cB + 2]);
     op_count += 3;
-    H[52] = -A[0][1] * (-B[1][0] + B[1][3] + B[3][0]);
+    H[52] = -A[rA + 0][cA + 1] * (-B[rB + 1][cB + 0] + B[rB + 1][cB + 3] + B[rB + 3][cB + 0]);
     op_count += 3;
-    H[53] = (A[0][1] + A[0][3] - A[1][1] - A[1][4] - A[2][1] + A[2][2] - A[3][1] + A[3][2] - A[3][3] - A[3][4]) * B[1][2];
+    H[53] = (A[rA + 0][cA + 1] + A[rA + 0][cA + 3] - A[rA + 1][cA + 1] - A[rA + 1][cA + 4] - A[rA + 2][cA + 1] + A[rA + 2][cA + 2] - A[rA + 3][cA + 1] + A[rA + 3][cA + 2] - A[rA + 3][cA + 3] - A[rA + 3][cA + 4]) * B[rB + 1][cB + 2];
     op_count += 10;
-    H[54] = (A[0][3] - A[3][3]) * (-B[1][2] + B[2][0] + B[2][2] - B[2][3] + B[3][2] - B[3][3]);
+    H[54] = (A[rA + 0][cA + 3] - A[rA + 3][cA + 3]) * (-B[rB + 1][cB + 2] + B[rB + 2][cB + 0] + B[rB + 2][cB + 2] - B[rB + 2][cB + 3] + B[rB + 3][cB + 2] - B[rB + 3][cB + 3]);
     op_count += 7;
-    H[55] = (A[0][0] - A[0][4] - A[3][0] + A[3][4]) * (B[2][0] + B[2][2] - B[2][3] + B[4][0] + B[4][2] - B[4][3]);
+    H[55] = (A[rA + 0][cA + 0] - A[rA + 0][cA + 4] - A[rA + 3][cA + 0] + A[rA + 3][cA + 4]) * (B[rB + 2][cB + 0] + B[rB + 2][cB + 2] - B[rB + 2][cB + 3] + B[rB + 4][cB + 0] + B[rB + 4][cB + 2] - B[rB + 4][cB + 3]);
     op_count += 9;
-    H[56] = (-A[2][0] - A[3][0]) * (-B[0][2] - B[0][4] - B[1][4] - B[4][0] - B[4][2] - B[4][4]);
+    H[56] = (-A[rA + 2][cA + 0] - A[rA + 3][cA + 0]) * (-B[rB + 0][cB + 2] - B[rB + 0][cB + 4] - B[rB + 1][cB + 4] - B[rB + 4][cB + 0] - B[rB + 4][cB + 2] - B[rB + 4][cB + 4]);
     op_count += 7;
-    H[57] = (-A[0][3] - A[0][4] - A[2][3] - A[2][4]) * (-B[4][0] + B[4][3] - B[4][4]);
+    H[57] = (-A[rA + 0][cA + 3] - A[rA + 0][cA + 4] - A[rA + 2][cA + 3] - A[rA + 2][cA + 4]) * (-B[rB + 4][cB + 0] + B[rB + 4][cB + 3] - B[rB + 4][cB + 4]);
     op_count += 6;
-    H[58] = (-A[2][2] + A[2][3] - A[3][2] + A[3][3]) * (B[3][0] + B[3][2] + B[3][4] + B[4][0] + B[4][2] + B[4][4]);
+    H[58] = (-A[rA + 2][cA + 2] + A[rA + 2][cA + 3] - A[rA + 3][cA + 2] + A[rA + 3][cA + 3]) * (B[rB + 3][cB + 0] + B[rB + 3][cB + 2] + B[rB + 3][cB + 4] + B[rB + 4][cB + 0] + B[rB + 4][cB + 2] + B[rB + 4][cB + 4]);
     op_count += 9;
-    H[59] = (A[1][4] + A[3][4]) * (B[1][2] - B[2][0] - B[2][1] - B[2][2] - B[4][1] - B[4][2]);
+    H[59] = (A[rA + 1][cA + 4] + A[rA + 3][cA + 4]) * (B[rB + 1][cB + 2] - B[rB + 2][cB + 0] - B[rB + 2][cB + 1] - B[rB + 2][cB + 2] - B[rB + 4][cB + 1] - B[rB + 4][cB + 2]);
     op_count += 7;
-    H[60] = (A[0][3] + A[2][3]) * (B[0][0] - B[0][3] + B[0][4] - B[1][4] - B[3][3] + B[3][4] - B[4][0] + B[4][3] - B[4][4]);
+    H[60] = (A[rA + 0][cA + 3] + A[rA + 2][cA + 3]) * (B[rB + 0][cB + 0] - B[rB + 0][cB + 3] + B[rB + 0][cB + 4] - B[rB + 1][cB + 4] - B[rB + 3][cB + 3] + B[rB + 3][cB + 4] - B[rB + 4][cB + 0] + B[rB + 4][cB + 3] - B[rB + 4][cB + 4]);
     op_count += 10;
-    H[61] = (A[1][0] + A[3][0]) * (B[0][1] + B[0][2] + B[1][1] - B[3][0] - B[3][1] - B[3][2]);
+    H[61] = (A[rA + 1][cA + 0] + A[rA + 3][cA + 0]) * (B[rB + 0][cB + 1] + B[rB + 0][cB + 2] + B[rB + 1][cB + 1] - B[rB + 3][cB + 0] - B[rB + 3][cB + 1] - B[rB + 3][cB + 2]);
     op_count += 7;
-    H[62] = (-A[2][2] - A[3][2]) * (-B[1][2] - B[2][2] - B[2][4] - B[3][0] - B[3][2] - B[3][4]);
+    H[62] = (-A[rA + 2][cA + 2] - A[rA + 3][cA + 2]) * (-B[rB + 1][cB + 2] - B[rB + 2][cB + 2] - B[rB + 2][cB + 4] - B[rB + 3][cB + 0] - B[rB + 3][cB + 2] - B[rB + 3][cB + 4]);
     op_count += 7;
-    H[63] = (A[0][0] - A[0][2] - A[0][3] + A[2][0] - A[2][2] - A[2][3]) * (B[0][0] - B[0][3] + B[0][4]);
+    H[63] = (A[rA + 0][cA + 0] - A[rA + 0][cA + 2] - A[rA + 0][cA + 3] + A[rA + 2][cA + 0] - A[rA + 2][cA + 2] - A[rA + 2][cA + 3]) * (B[rB + 0][cB + 0] - B[rB + 0][cB + 3] + B[rB + 0][cB + 4]);
     op_count += 8;
-    H[64] = (-A[0][0] + A[3][0]) * (-B[0][2] + B[0][3] + B[1][3] - B[4][0] - B[4][2] + B[4][3]);
+    H[64] = (-A[rA + 0][cA + 0] + A[rA + 3][cA + 0]) * (-B[rB + 0][cB + 2] + B[rB + 0][cB + 3] + B[rB + 1][cB + 3] - B[rB + 4][cB + 0] - B[rB + 4][cB + 2] + B[rB + 4][cB + 3]);
     op_count += 7;
-    H[65] = (A[0][0] - A[0][1] + A[0][2] - A[0][4] - A[1][1] - A[1][4] - A[2][1] + A[2][2] - A[3][0] + A[3][1]) * B[1][3];
+    H[65] = (A[rA + 0][cA + 0] - A[rA + 0][cA + 1] + A[rA + 0][cA + 2] - A[rA + 0][cA + 4] - A[rA + 1][cA + 1] - A[rA + 1][cA + 4] - A[rA + 2][cA + 1] + A[rA + 2][cA + 2] - A[rA + 3][cA + 0] + A[rA + 3][cA + 1]) * B[rB + 1][cB + 3];
     op_count += 10;
-    H[66] = (A[1][4] - A[2][4]) * (B[0][0] + B[0][1] + B[0][4] - B[1][4] - B[3][0] - B[3][1] - B[3][4] + B[4][1] + B[4][4]);
+    H[66] = (A[rA + 1][cA + 4] - A[rA + 2][cA + 4]) * (B[rB + 0][cB + 0] + B[rB + 0][cB + 1] + B[rB + 0][cB + 4] - B[rB + 1][cB + 4] - B[rB + 3][cB + 0] - B[rB + 3][cB + 1] - B[rB + 3][cB + 4] + B[rB + 4][cB + 1] + B[rB + 4][cB + 4]);
     op_count += 10;
-    H[67] = (A[0][0] + A[0][2] - A[0][3] - A[0][4] - A[3][0] - A[3][2] + A[3][3] + A[3][4]) * (-B[2][0] - B[2][2] + B[2][3]);
+    H[67] = (A[rA + 0][cA + 0] + A[rA + 0][cA + 2] - A[rA + 0][cA + 3] - A[rA + 0][cA + 4] - A[rA + 3][cA + 0] - A[rA + 3][cA + 2] + A[rA + 3][cA + 3] + A[rA + 3][cA + 4]) * (-B[rB + 2][cB + 0] - B[rB + 2][cB + 2] + B[rB + 2][cB + 3]);
     op_count += 10;
-    H[68] = (-A[0][2] + A[0][3] - A[1][2] + A[1][3]) * (-B[1][3] - B[2][0] - B[2][1] + B[2][3] - B[4][1] + B[4][3]);
+    H[68] = (-A[rA + 0][cA + 2] + A[rA + 0][cA + 3] - A[rA + 1][cA + 2] + A[rA + 1][cA + 3]) * (-B[rB + 1][cB + 3] - B[rB + 2][cB + 0] - B[rB + 2][cB + 1] + B[rB + 2][cB + 3] - B[rB + 4][cB + 1] + B[rB + 4][cB + 3]);
     op_count += 9;
-    H[69] = (A[1][2] - A[1][4] + A[3][2] - A[3][4]) * (-B[2][0] - B[2][1] - B[2][2]);
+    H[69] = (A[rA + 1][cA + 2] - A[rA + 1][cA + 4] + A[rA + 3][cA + 2] - A[rA + 3][cA + 4]) * (-B[rB + 2][cB + 0] - B[rB + 2][cB + 1] - B[rB + 2][cB + 2]);
     op_count += 6;
-    H[70] = (-A[2][0] + A[2][2] - A[2][3] + A[2][4] - A[3][0] + A[3][2] - A[3][3] + A[3][4]) * (-B[4][0] - B[4][2] - B[4][4]);
+    H[70] = (-A[rA + 2][cA + 0] + A[rA + 2][cA + 2] - A[rA + 2][cA + 3] + A[rA + 2][cA + 4] - A[rA + 3][cA + 0] + A[rA + 3][cA + 2] - A[rA + 3][cA + 3] + A[rA + 3][cA + 4]) * (-B[rB + 4][cB + 0] - B[rB + 4][cB + 2] - B[rB + 4][cB + 4]);
     op_count += 10;
-    H[71] = (-A[1][0] - A[1][3] - A[3][0] - A[3][3]) * (B[3][0] + B[3][1] + B[3][2]);
+    H[71] = (-A[rA + 1][cA + 0] - A[rA + 1][cA + 3] - A[rA + 3][cA + 0] - A[rA + 3][cA + 3]) * (B[rB + 3][cB + 0] + B[rB + 3][cB + 1] + B[rB + 3][cB + 2]);
     op_count += 6;
-    H[72] = (A[0][2] - A[0][3] - A[0][4] + A[1][2] - A[1][3] - A[1][4]) * (B[0][0] + B[0][1] - B[0][3] + B[1][3] + B[4][1] - B[4][3]);
+    H[72] = (A[rA + 0][cA + 2] - A[rA + 0][cA + 3] - A[rA + 0][cA + 4] + A[rA + 1][cA + 2] - A[rA + 1][cA + 3] - A[rA + 1][cA + 4]) * (B[rB + 0][cB + 0] + B[rB + 0][cB + 1] - B[rB + 0][cB + 3] + B[rB + 1][cB + 3] + B[rB + 4][cB + 1] - B[rB + 4][cB + 3]);
     op_count += 11;
-    H[73] = (A[1][0] - A[1][2] + A[1][3] - A[2][0] + A[2][2] - A[2][3]) * (B[3][0] + B[3][1] + B[3][4]);
+    H[73] = (A[rA + 1][cA + 0] - A[rA + 1][cA + 2] + A[rA + 1][cA + 3] - A[rA + 2][cA + 0] + A[rA + 2][cA + 2] - A[rA + 2][cA + 3]) * (B[rB + 3][cB + 0] + B[rB + 3][cB + 1] + B[rB + 3][cB + 4]);
     op_count += 8;
-    H[74] = -(A[0][1] + A[0][3] - A[1][1] - A[1][4] - A[2][0] + A[2][1] + A[2][3] + A[2][4] - A[3][0] + A[3][1]) * B[1][4];
+    H[74] = -(A[rA + 0][cA + 1] + A[rA + 0][cA + 3] - A[rA + 1][cA + 1] - A[rA + 1][cA + 4] - A[rA + 2][cA + 0] + A[rA + 2][cA + 1] + A[rA + 2][cA + 3] + A[rA + 2][cA + 4] - A[rA + 3][cA + 0] + A[rA + 3][cA + 1]) * B[rB + 1][cB + 4];
     op_count += 10;
-    H[75] = (A[0][2] + A[2][2]) * (-B[0][0] + B[0][3] - B[0][4] + B[1][3] + B[2][3] - B[2][4]);
+    H[75] = (A[rA + 0][cA + 2] + A[rA + 2][cA + 2]) * (-B[rB + 0][cB + 0] + B[rB + 0][cB + 3] - B[rB + 0][cB + 4] + B[rB + 1][cB + 3] + B[rB + 2][cB + 3] - B[rB + 2][cB + 4]);
     op_count += 7;
 
-    // Compute the resulting matrix C (4x5)
-    Matrix C = createMatrix(4, 5);
-
-    C[0][0] = -H[9] + H[11] + H[13] - H[14] - H[15] + H[52] + H[4] - H[65] - H[6];
+    C[rC + 0][cC + 0] = -H[9] + H[11] + H[13] - H[14] - H[15] + H[52] + H[4] - H[65] - H[6];
     op_count += 8;
-    C[1][0] = H[9] + H[10] - H[11] + H[12] + H[14] + H[15] - H[16] - H[43] + H[50];
+    C[rC + 1][cC + 0] = H[9] + H[10] - H[11] + H[12] + H[14] + H[15] - H[16] - H[43] + H[50];
     op_count += 8;
-    C[2][0] = H[9] - H[11] + H[14] + H[15] - H[0] + H[1] + H[2] - H[3] + H[74];
+    C[rC + 2][cC + 0] = H[9] - H[11] + H[14] + H[15] - H[0] + H[1] + H[2] - H[3] + H[74];
     op_count += 8;
-    C[3][0] = -H[9] + H[11] - H[14] - H[15] + H[51] + H[53] - H[5] - H[7] + H[8];
+    C[rC + 3][cC + 0] = -H[9] + H[11] - H[14] - H[15] + H[51] + H[53] - H[5] - H[7] + H[8];
     op_count += 8;
-    C[0][1] = H[12] + H[14] + H[19] + H[20] - H[21] + H[22] + H[24] - H[42] + H[48] + H[49];
+    C[rC + 0][cC + 1] = H[12] + H[14] + H[19] + H[20] - H[21] + H[22] + H[24] - H[42] + H[48] + H[49];
     op_count += 9;
-    C[1][1] = -H[10] + H[11] - H[12] - H[14] - H[15] + H[16] + H[17] - H[18] - H[20] + H[42] + H[43];
+    C[rC + 1][cC + 1] = -H[10] + H[11] - H[12] - H[14] - H[15] + H[16] + H[17] - H[18] - H[20] + H[42] + H[43];
     op_count += 10;
-    C[2][1] = -H[15] - H[18] - H[20] - H[27] - H[28] - H[37] + H[41] + H[43] - H[46] + H[47];
+    C[rC + 2][cC + 1] = -H[15] - H[18] - H[20] - H[27] - H[28] - H[37] + H[41] + H[43] - H[46] + H[47];
     op_count += 9;
-    C[3][1] = H[10] - H[11] - H[17] + H[20] - H[31] + H[32] - H[33] - H[35] + H[61] - H[69];
+    C[rC + 3][cC + 1] = H[10] - H[11] - H[17] + H[20] - H[31] + H[32] - H[33] - H[35] + H[61] - H[69];
     op_count += 9;
-    C[0][2] = H[14] + H[22] + H[23] + H[33] - H[36] + H[39] - H[40] + H[54] - H[55] - H[8];
+    C[rC + 0][cC + 2] = H[14] + H[22] + H[23] + H[33] - H[36] + H[39] - H[40] + H[54] - H[55] - H[8];
     op_count += 9;
-    C[1][2] = -H[9] + H[18] + H[31] + H[34] + H[35] + H[36] - H[42] - H[59] - H[5] - H[71];
+    C[rC + 1][cC + 2] = -H[9] + H[18] + H[31] + H[34] + H[35] + H[36] - H[42] - H[59] - H[5] - H[71];
     op_count += 9;
-    C[2][2] = -H[15] - H[27] + H[32] + H[36] - H[38] + H[44] - H[45] + H[62] - H[70] - H[7];
+    C[rC + 2][cC + 2] = -H[15] - H[27] + H[32] + H[36] - H[38] + H[44] - H[45] + H[62] - H[70] - H[7];
     op_count += 9;
-    C[3][2] = H[9] + H[14] + H[15] - H[32] + H[33] - H[34] - H[36] - H[53] + H[5] + H[7] - H[8];
+    C[rC + 3][cC + 2] = H[9] + H[14] + H[15] - H[32] + H[33] - H[34] - H[36] - H[53] + H[5] + H[7] - H[8];
     op_count += 10;
-    C[0][3] = -H[9] + H[11] + H[13] - H[15] + H[22] + H[23] + H[24] + H[25] + H[4] - H[65] - H[6];
+    C[rC + 0][cC + 3] = -H[9] + H[11] + H[13] - H[15] + H[22] + H[23] + H[24] + H[25] + H[4] - H[65] - H[6];
     op_count += 10;
-    C[1][3] = H[9] + H[17] - H[18] + H[19] - H[21] - H[23] - H[25] - H[4] - H[68] + H[72];
+    C[rC + 1][cC + 3] = H[9] + H[17] - H[18] + H[19] - H[21] - H[23] - H[25] - H[4] - H[68] + H[72];
     op_count += 9;
-    C[2][3] = -H[13] + H[15] - H[22] - H[25] + H[26] + H[28] + H[30] + H[45] - H[57] + H[75];
+    C[rC + 2][cC + 3] = -H[13] + H[15] - H[22] - H[25] + H[26] + H[28] + H[30] + H[45] - H[57] + H[75];
     op_count += 9;
-    C[3][3] = H[11] + H[24] + H[25] - H[32] - H[34] - H[39] + H[40] + H[64] - H[67] - H[6];
+    C[rC + 3][cC + 3] = H[11] + H[24] + H[25] - H[32] - H[34] - H[39] + H[40] + H[64] - H[67] - H[6];
     op_count += 9;
-    C[0][4] = H[14] + H[23] + H[24] + H[26] - H[27] + H[29] + H[30] - H[3] + H[60] + H[63];
+    C[rC + 0][cC + 4] = H[14] + H[23] + H[24] + H[26] - H[27] + H[29] + H[30] - H[3] + H[60] + H[63];
     op_count += 9;
-    C[1][4] = -H[9] - H[17] - H[1] - H[29] - H[37] + H[41] - H[42] + H[45] + H[66] + H[73];
+    C[rC + 1][cC + 4] = -H[9] - H[17] - H[1] - H[29] - H[37] + H[41] - H[42] + H[45] + H[66] + H[73];
     op_count += 9;
-    C[2][4] = -H[9] + H[11] - H[14] + H[27] + H[28] - H[1] - H[29] - H[2] + H[45] + H[3] - H[74];
+    C[rC + 2][cC + 4] = -H[9] + H[11] - H[14] + H[27] + H[28] - H[1] - H[29] - H[2] + H[45] + H[3] - H[74];
     op_count += 10;
-    C[3][4] = -H[11] - H[28] + H[29] - H[33] + H[34] + H[38] + H[2] - H[44] + H[56] + H[58];
+    C[rC + 3][cC + 4] = -H[11] - H[28] + H[29] - H[33] + H[34] + H[38] + H[2] - H[44] + H[56] + H[58];
     op_count += 9;
-
-    return C;
 }
 ```
 
 - Rekurencyjna funkcja mnożąca macierze za pomocą metody AI
 
 ```cpp
-Matrix multiply_ai_recursive(const Matrix &A, const Matrix &B, unsigned long long &op_count)
+void multiply_ai_recursive_inplace(Matrix &C, int rC, int cC,
+                                   const Matrix &A, int rA, int cA,
+                                   const Matrix &B, int rB, int cB,
+                                   int M, int K, int P, unsigned long long &op_count)
 {
     const int M_BASE = 4;
     const int K_BASE = 5;
     const int P_BASE = 5;
 
-    int M = A.size();
-    int K = (M > 0) ? A[0].size() : 0;
-    int P = (B.size() > 0) ? B[0].size() : 0;
-
-    if (M == M_BASE && K == K_BASE && B.size() == K_BASE && P == P_BASE)
+    if (M == M_BASE && K == K_BASE && P == P_BASE)
     {
-        unsigned long long temp_ops = 0;
-        Matrix C = matrix_ai(A, B, temp_ops);
-        op_count += temp_ops;
-        return C;
+        matrix_ai_inplace(C, rC, cC, A, rA, cA, B, rB, cB, op_count);
+        return;
     }
 
-    int m_split = M / 2;
-    int k_split = K / 2;
-    int p_split = P / 2;
-
-    // Check for odd dimensions
     if (M % 2 != 0 || K % 2 != 0 || P % 2 != 0)
     {
         std::cerr << "Error: Matrix dimensions (" << M << "x" << K << ") * ("
@@ -687,166 +700,279 @@ Matrix multiply_ai_recursive(const Matrix &A, const Matrix &B, unsigned long lon
         throw std::invalid_argument("Matrix does not have appropriate dimensions for this algorithm.");
     }
 
-    // Subdivide A into 4 blocks
-    Matrix a11 = subMatrix(A, 0, m_split, 0, k_split);
-    Matrix a12 = subMatrix(A, 0, m_split, k_split, K);
-    Matrix a21 = subMatrix(A, m_split, M, 0, k_split);
-    Matrix a22 = subMatrix(A, m_split, M, k_split, K);
+    int m_split = M / 2;
+    int k_split = K / 2;
+    int p_split = P / 2;
 
-    Matrix b11 = subMatrix(B, 0, k_split, 0, p_split);
-    Matrix b12 = subMatrix(B, 0, k_split, p_split, P);
-    Matrix b21 = subMatrix(B, k_split, K, 0, p_split);
-    Matrix b22 = subMatrix(B, k_split, K, p_split, P);
+    Matrix c11_p1 = createMatrix(m_split, p_split);
+    Matrix c11_p2 = createMatrix(m_split, p_split);
+    Matrix c12_p1 = createMatrix(m_split, p_split);
+    Matrix c12_p2 = createMatrix(m_split, p_split);
+    Matrix c21_p1 = createMatrix(m_split, p_split);
+    Matrix c21_p2 = createMatrix(m_split, p_split);
+    Matrix c22_p1 = createMatrix(m_split, p_split);
+    Matrix c22_p2 = createMatrix(m_split, p_split);
 
-    // 8 recursive calls
-    Matrix c11_p1 = multiply_ai_recursive(a11, b11, op_count);
-    Matrix c11_p2 = multiply_ai_recursive(a12, b21, op_count);
+    // A11*B11
+    multiply_ai_recursive_inplace(c11_p1, 0, 0, A, rA, cA, B, rB, cB, m_split, k_split, p_split, op_count);
+    // A12*B21
+    multiply_ai_recursive_inplace(c11_p2, 0, 0, A, rA, cA + k_split, B, rB + k_split, cB, m_split, k_split, p_split, op_count);
+    // A11*B12
+    multiply_ai_recursive_inplace(c12_p1, 0, 0, A, rA, cA, B, rB, cB + p_split, m_split, k_split, p_split, op_count);
+    // A12*B22
+    multiply_ai_recursive_inplace(c12_p2, 0, 0, A, rA, cA + k_split, B, rB + k_split, cB + p_split, m_split, k_split, p_split, op_count);
+    // A21*B11
+    multiply_ai_recursive_inplace(c21_p1, 0, 0, A, rA + m_split, cA, B, rB, cB, m_split, k_split, p_split, op_count);
+    // A22*B21
+    multiply_ai_recursive_inplace(c21_p2, 0, 0, A, rA + m_split, cA + k_split, B, rB + k_split, cB, m_split, k_split, p_split, op_count);
+    // A21*B12
+    multiply_ai_recursive_inplace(c22_p1, 0, 0, A, rA + m_split, cA, B, rB, cB + p_split, m_split, k_split, p_split, op_count);
+    // A22*B22
+    multiply_ai_recursive_inplace(c22_p2, 0, 0, A, rA + m_split, cA + k_split, B, rB + k_split, cB + p_split, m_split, k_split, p_split, op_count);
 
-    Matrix c12_p1 = multiply_ai_recursive(a11, b12, op_count);
-    Matrix c12_p2 = multiply_ai_recursive(a12, b22, op_count);
+    // C11 = c11_p1 + c11_p2
+    addMatrices_inplace(C, rC, cC, c11_p1, 0, 0, c11_p2, 0, 0, m_split, p_split, op_count);
+    // C12 = c12_p1 + c12_p2
+    addMatrices_inplace(C, rC, cC + p_split, c12_p1, 0, 0, c12_p2, 0, 0, m_split, p_split, op_count);
+    // C21 = c21_p1 + c21_p2
+    addMatrices_inplace(C, rC + m_split, cC, c21_p1, 0, 0, c21_p2, 0, 0, m_split, p_split, op_count);
+    // C22 = c22_p1 + c22_p2
+    addMatrices_inplace(C, rC + m_split, cC + p_split, c22_p1, 0, 0, c22_p2, 0, 0, m_split, p_split, op_count);
+}
+```
 
-    Matrix c21_p1 = multiply_ai_recursive(a21, b11, op_count);
-    Matrix c21_p2 = multiply_ai_recursive(a22, b21, op_count);
+- Wrapper wywołujący rekurencyjną funkcję AI
 
-    Matrix c22_p1 = multiply_ai_recursive(a21, b12, op_count);
-    Matrix c22_p2 = multiply_ai_recursive(a22, b22, op_count);
+```cpp
+Matrix multiply_ai_recursive_wrapper(const Matrix &A, const Matrix &B, unsigned long long &op_count)
+{
+    size_t M = A.size();
+    size_t K = (M > 0) ? A[0].size() : 0;
+    size_t P = (B.size() > 0) ? B[0].size() : 0;
 
-    Matrix c11 = addMatrices(c11_p1, c11_p2, op_count);
-    Matrix c12 = addMatrices(c12_p1, c12_p2, op_count);
-    Matrix c21 = addMatrices(c21_p1, c21_p2, op_count);
-    Matrix c22 = addMatrices(c22_p1, c22_p2, op_count);
+    if (K == 0 || K != B.size())
+    {
+        throw std::invalid_argument("Incompatible matrix dimensions for multiplication.");
+    }
 
-    Matrix C = createMatrix(M, P);
-    joinMatrices(C, c11, c12, c21, c22, m_split, p_split);
+    op_count = 0;
+    Matrix C = createMatrix(M, P, false);
+
+    multiply_ai_recursive_inplace(C, 0, 0, A, 0, 0, B, 0, 0, M, K, P, op_count);
 
     return C;
+}
 ```
 
 ## Metodologia pomiarowa
 
-- Czas: std::chrono::high_resolution_clock (średnia z ≥3 powtórzeń na punkt)
+- Czas: std::chrono::high_resolution_clock
 - Operacje: ręcznie inkrementowany licznik przy każdej operacji +, −, ·, /
-- Pamięć: WinAPI (GetProcessMemoryInfo / PSAPI) lub odpowiednik; raport w KB
-- Walidacja: porównanie wyników z wersją iteracyjną O(N^3) przy tolerancji ϵ = 1e−9
+- Pamięć: WinAPI, raport w KB
+- Walidacja: porównanie wyników z wersją iteracyjną O(N^3) przy tolerancji eps = 1e−9
 
-Format wyników (CSV):
+#### Kod funkcji służących do pomiaru czasu, pamięci i operacji:
 
+```cpp
+bool areMatricesEqual(const Matrix &A, const Matrix &B, double epsilon = 1e-9)
+{
+    if (A.size() != B.size())
+        return false;
+    if (A.empty())
+        return B.empty();
+    if (A[0].size() != B[0].size())
+        return false;
+    size_t rows = A.size();
+    size_t cols = A[0].size();
+    for (size_t i = 0; i < rows; ++i)
+    {
+        for (size_t j = 0; j < cols; ++j)
+        {
+            if (std::abs(A[i][j] - B[i][j]) > epsilon)
+            {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+void run_NxN_Benchmark(std::vector<BenchmarkResult> &results, const std::string &algorithmToRun)
+{
+    std::cout << "   Testing algorithm: " << algorithmToRun << " (Matrix N x N)" << std::endl;
+
+    std::vector<int> vector_matrices = {2, 3, 5, 7, 20, 50, 100, 200, 500, 1000};
+
+    for (int n : vector_matrices)
+    {
+        std::string dim_str = std::to_string(n) + "x" + std::to_string(n);
+        std::cout << "\n--- Testing dimension: " << dim_str << " ---" << std::endl;
+
+        Matrix A = createMatrix(n, n, true);
+        Matrix B = createMatrix(n, n, true);
+
+        double matsBaselineKB = getPeakPrivateUsageKB();
+
+        unsigned long long ops = 0;
+        double peakMem = 0, deltaMem = 0;
+        std::chrono::duration<double, std::milli> duration(0);
+
+        Matrix C_benchmark;
+        if (algorithmToRun != "iterative")
+        {
+            unsigned long long dummy_ops = 0;
+            C_benchmark = iterativeMultiply(A, B, dummy_ops);
+            matsBaselineKB = getPeakPrivateUsageKB();
+        }
+
+        Matrix C_result;
+        bool passed = true;
+
+        auto start = std::chrono::high_resolution_clock::now();
+
+        if (algorithmToRun == "iterative")
+        {
+            C_result = iterativeMultiply(A, B, ops);
+            C_benchmark = C_result;
+        }
+        else if (algorithmToRun == "strassen")
+        {
+            C_result = multiply_strassen_wrapper(A, B, ops);
+        }
+        else if (algorithmToRun == "binet")
+        {
+            C_result = multiply_recursive_wrapper(A, B, ops);
+        }
+
+        auto end = std::chrono::high_resolution_clock::now();
+        duration = end - start;
+        peakMem = getPeakPrivateUsageKB();
+
+        deltaMem = peakMem - matsBaselineKB;
+        passed = areMatricesEqual(C_benchmark, C_result);
+
+        results.push_back({dim_str, algorithmToRun, ops, duration.count(), deltaMem, passed});
+        std::cout << std::setw(10) << algorithmToRun << ": "
+                  << std::fixed << std::setprecision(4) << duration.count() << " ms, "
+                  << deltaMem << " KB, Correct: " << (passed ? "YES" : "NO") << std::endl;
+    }
+}
+
+void run_AI_Benchmark(std::vector<BenchmarkResult> &results, const std::string &algorithmToRun)
+{
+    std::cout << "   Testing algorithm: " << algorithmToRun << " (AI Matrices)" << std::endl;
+
+    int max_n_level = 7; // Test (4*2^7) x (5*2^7) = 512x640
+
+    for (int n = 0; n <= max_n_level; ++n)
+    {
+        int M = 4 * static_cast<int>(std::pow(2, n));
+        int K = 5 * static_cast<int>(std::pow(2, n));
+        int P = 5 * static_cast<int>(std::pow(2, n));
+
+        std::string dim_str = "(" + std::to_string(M) + "x" + std::to_string(K) + ") * (" +
+                              std::to_string(K) + "x" + std::to_string(P) + ")";
+        std::cout << "\n--- Testing (Level n=" << n << "): " << dim_str << " ---" << std::endl;
+
+        Matrix A = createMatrix(M, K, true);
+        Matrix B = createMatrix(K, P, true);
+
+        double matsBaselineKB = getPeakPrivateUsageKB();
+
+        unsigned long long ops = 0;
+        double peakMem = 0, deltaMem = 0;
+        std::chrono::duration<double, std::milli> duration(0);
+
+        Matrix C_benchmark;
+        if (algorithmToRun != "iterative_ai")
+        {
+            unsigned long long dummy_ops = 0;
+            C_benchmark = iterativeMultiply(A, B, dummy_ops);
+            matsBaselineKB = getPeakPrivateUsageKB();
+        }
+
+        Matrix C_result;
+        bool passed = true;
+        std::string algoName;
+
+        auto start = std::chrono::high_resolution_clock::now();
+
+        if (algorithmToRun == "iterative_ai")
+        {
+            algoName = "Iterative";
+            C_result = iterativeMultiply(A, B, ops);
+            C_benchmark = C_result;
+        }
+        else if (algorithmToRun == "ai")
+        {
+            algoName = "AI (Recursive)";
+            C_result = multiply_ai_recursive_wrapper(A, B, ops);
+        }
+
+        auto end = std::chrono::high_resolution_clock::now();
+        duration = end - start;
+        peakMem = getPeakPrivateUsageKB();
+        deltaMem = peakMem - matsBaselineKB;
+        passed = areMatricesEqual(C_benchmark, C_result);
+
+        results.push_back({dim_str, algoName, ops, duration.count(), deltaMem, passed});
+        std::cout << std::setw(10) << algoName << ": "
+                  << std::fixed << std::setprecision(4) << duration.count() << " ms, "
+                  << deltaMem << " KB, Correct: " << (passed ? "YES" : "NO") << std::endl;
+
+        if (!passed)
+        {
+            std::cout << "CRITICAL ERROR: Algorithm did not work correctly. Stopping." << std::endl;
+            break;
+        }
+    }
+}
 ```
 
-Size,Algorithm,Operations,Duration_ms,Memory_kb
-16,Strassen,XXXX,YY.Y,ZZZZ
+#### Format wyników (CSV):
+
+```csv
+Dimensions,Algorithm,Operations,Duration_ms,Memory_kb,Passed
+"2x2",strassen,25,0.0119,0,Yes`
 ...
-
 ```
-
-Pliki CSV w repozytorium:
-
-- `matrix_multiplication_results_BINET.csv`
-- `matrix_multiplication_results_STRASSEN.csv`
-- `matrix_multiplication_results_AlphaTensor.csv` lub `ai_recursive_benchmark.csv`
-
----
 
 ## Wyniki i wykresy
 
-Wstaw wykresy (lub podlinkuj pliki PNG) dla zakresu N = 1…N_max:
-
 1. Czas działania (ms) vs. rozmiar macierzy (oś X)
 
-![Czas](Duration.png)
+![Czas](./plots/time_ms.png)
 
 2. Liczba operacji zmiennoprzecinkowych vs. rozmiar
 
-![Operacje](Operation.png)
+![Operacje](./plots/operations.png)
 
 3. Zużycie pamięci (KB) vs. rozmiar
 
-![Pamięć](Memory.png)
-
-Tabela przykładowa (fragment):
-
-| N   | Algorytm | Operacje [#] | Czas [ms] | Pamięć [KB] |
-| --- | -------- | ------------ | --------- | ----------- |
-| 16  | Binét    | …            | …         | …           |
-| 16  | Strassen | …            | …         | …           |
-| 16  | AI       | …            | …         | …           |
-
----
-
-## Ograniczenia, błędy i obsługa przypadków brzegowych
-
-- Brak paddingu: jeżeli algorytm wymaga specyficznych wymiarów (np. parzyste N), program powinien zakończyć pracę i wypisać czytelny komunikat (bez sztucznego dopełniania).
-- Stabilność numeryczna: porównania wyników z tolerancją ϵ.
-- Zużycie pamięci: opis ewentualnych pików pamięci i ich przyczyn.
-
----
+![Pamięć](./plots/memory_kb.png)
 
 ## Szacowanie złożoności obliczeniowej
 
-- Binét: … (wyprowadzenie/odwołanie do literatury) — eksperymentalne dopasowanie krzywej
-- Strassen: O(N^{log₂7}) ≈ O(N^{2.807}); pomiar vs. teoria
-- AI: opis przewidywanej złożoności i obserwacje eksperymentalne
-
-Metoda estymacji: regresja log–log (czas/operacje vs. N), wykres trendu i współczynnik R².
-
----
-
-## Walidacja poprawności
-
-- Testy małych rozmiarów (N=2,3,5,7,…) — porównanie z implementacją iteracyjną
-- Dodatkowo testy losowe dla kilku N, weryfikacja normy błędu ||C_ref − C||\_F
-
----
+- Binét: T(n) = 8·T(n/2) + O(n^2) => n^(log2 8) = n^3 dominuje => T(n) = O(n^3)
+- Strassen: T(n) = 7·T(n/2) + O(n^2) => n^(log2 7) ≈ n^2.807 => T(n) = O(n^log2 7)
 
 ## Instrukcja uruchomienia (Windows, PowerShell)
 
 Kompilacja (MSYS2/MinGW, C++17):
 
 ```powershell
-g++ -std=c++17 -O2 -Wall -Wextra -DNOMINMAX -o matrix_Binet.exe matrix_Binet.cpp -lpsapi
-g++ -std=c++17 -O2 -Wall -Wextra -DNOMINMAX -o matrix_Strassen.exe matrix_Strassen.cpp -lpsapi
-g++ -std=c++17 -O2 -Wall -Wextra -DNOMINMAX -o matrix_ai.exe matrix_ai.cpp -lpsapi
+++ -std=c++17 -O2 -Wall -Wextra -I lab1\src `
+>>   lab1\src\main_benchmark.cpp `
+>>   lab1\src\helperFunctions.cpp `
+>>   lab1\src\matrix_Strassen.cpp `
+>>   lab1\src\matrix_Binet.cpp `
+>>   lab1\src\matrix_ai.cpp `
+>>   -lpsapi -o lab1\benchmark.exe;
 ```
 
-Uruchomienie:
+Wywołanie poszczególnych benchmarków:
 
-```powershell
-./matrix_Binet.exe
-./matrix_Strassen.exe
-./matrix_ai.exe
-```
-
-Skrypt z wykresami (opcjonalnie):
-
-```powershell
-py ./Binet_Strassen.py
-```
-
----
-
-## Dyskusja i wnioski
-
-- Porównanie osiągów (czas, operacje, pamięć) między Binét / Strassen / AI
-- Kiedy który algorytm jest korzystny i dlaczego
-- Wpływ ograniczeń (brak paddingu) na implementację i wyniki
-- Potencjalne kierunki optymalizacji
-
----
-
-## Bibliografia
-
-1. Volker Strassen, Gaussian Elimination is Not Optimal, 1969
-2. Artykuł „Nature” dot. mnożenia macierzy metodą AI — pełny cytat
-3. Inne źródła (podręczniki, wykłady, wpisy blogowe) — pełne odniesienia
-
----
-
-Checklist (do odhaczenia przed oddaniem):
-
-- [ ] Pseudokod obu algorytmów rekurencyjnych
-- [ ] Fragmenty kodu (najważniejsze miejsca)
-- [ ] Wykresy: czas, operacje, pamięć (1…N_max)
-- [ ] CSV z wynikami dołączone do repo
-- [ ] Oszacowanie złożoności (teoria/eksperyment)
-- [ ] Walidacja poprawności na małych N
-- [ ] Opis ograniczeń i braku paddingu
+iterative z argumentem `iterative`
+Strassen z argumentem `strassen`
+Binet z argumentem `binet`
+AI recursive z argumentem `ai`

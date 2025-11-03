@@ -4,11 +4,10 @@
 #include <cmath>
 #include <chrono>
 #include <fstream>
-#include <iomanip> // Potrzebne dla std::setw, std::setprecision, std::fixed
+#include <iomanip>
 #include <stdexcept>
-#include <map> // Do przechowywania wyników
+#include <map>
 
-// Dołączenie wszystkich nagłówków z implementacjami
 #include "helperFunctions.h"
 #include "matrix_Strassen.h"
 #include "matrix_Binet.h"
@@ -16,7 +15,6 @@
 
 using Matrix = std::vector<std::vector<double>>;
 
-// Struktura do przechowywania wyników
 struct BenchmarkResult
 {
     std::string dimensions;
@@ -27,7 +25,6 @@ struct BenchmarkResult
     bool passed;
 };
 
-// Funkcja do sprawdzania poprawności
 bool areMatricesEqual(const Matrix &A, const Matrix &B, double epsilon = 1e-9)
 {
     if (A.size() != B.size())
@@ -51,41 +48,31 @@ bool areMatricesEqual(const Matrix &A, const Matrix &B, double epsilon = 1e-9)
     return true;
 }
 
-// --- Funkcja do benchmarku N x N (Strassen, Binet, Iterative) ---
-// *** ZMIANA: Funkcja przyjmuje 'algorithmToRun', aby uruchomić tylko jeden test ***
 void run_NxN_Benchmark(std::vector<BenchmarkResult> &results, const std::string &algorithmToRun)
 {
-    std::cout << "==================================================" << std::endl;
-    std::cout << "   Testowanie algorytmu: " << algorithmToRun << " (Macierze N x N)" << std::endl;
-    std::cout << "==================================================" << std::endl;
+    std::cout << "   Testing algorithm: " << algorithmToRun << " (Matrix N x N)" << std::endl;
 
     std::vector<int> vector_matrices = {2, 3, 5, 7, 20, 50, 100, 200, 500, 1000};
-
-    // Baza dla całego procesu (każdy test n=... będzie mierzony względem poprzedniego szczytu)
-    // To jest teraz POPRAWNE, ponieważ mierzymy tylko jeden algorytm naraz.
-    // double processBaselineKB = getPeakPrivateUsageKB();
 
     for (int n : vector_matrices)
     {
         std::string dim_str = std::to_string(n) + "x" + std::to_string(n);
-        std::cout << "\n--- Testowanie wymiaru: " << dim_str << " ---" << std::endl;
+        std::cout << "\n--- Testing dimension: " << dim_str << " ---" << std::endl;
 
         Matrix A = createMatrix(n, n, true);
         Matrix B = createMatrix(n, n, true);
 
-        // Baza *przed* uruchomieniem algorytmu (ale po alokacji A i B)
         double matsBaselineKB = getPeakPrivateUsageKB();
 
         unsigned long long ops = 0;
         double peakMem = 0, deltaMem = 0;
         std::chrono::duration<double, std::milli> duration(0);
 
-        Matrix C_benchmark; // Potrzebna do weryfikacji
+        Matrix C_benchmark;
         if (algorithmToRun != "iterative")
         {
             unsigned long long dummy_ops = 0;
             C_benchmark = iterativeMultiply(A, B, dummy_ops);
-            // Aktualizujemy bazę, aby uwzględnić C_benchmark
             matsBaselineKB = getPeakPrivateUsageKB();
         }
 
@@ -97,7 +84,7 @@ void run_NxN_Benchmark(std::vector<BenchmarkResult> &results, const std::string 
         if (algorithmToRun == "iterative")
         {
             C_result = iterativeMultiply(A, B, ops);
-            C_benchmark = C_result; // Sam jest dla siebie benchmarkiem
+            C_benchmark = C_result;
         }
         else if (algorithmToRun == "strassen")
         {
@@ -112,30 +99,21 @@ void run_NxN_Benchmark(std::vector<BenchmarkResult> &results, const std::string 
         duration = end - start;
         peakMem = getPeakPrivateUsageKB();
 
-        // Delta = Szczyt po teście - Baza (po A i B [i C_benchmark])
         deltaMem = peakMem - matsBaselineKB;
         passed = areMatricesEqual(C_benchmark, C_result);
 
         results.push_back({dim_str, algorithmToRun, ops, duration.count(), deltaMem, passed});
         std::cout << std::setw(10) << algorithmToRun << ": "
                   << std::fixed << std::setprecision(4) << duration.count() << " ms, "
-                  << deltaMem << " KB, Poprawny: " << (passed ? "TAK" : "NIE") << std::endl;
-
-        // Ustawiamy bazę dla *następnej iteracji pętli* na obecny szczyt
-        // processBaselineKB = peakMem;
+                  << deltaMem << " KB, Correct: " << (passed ? "YES" : "NO") << std::endl;
     }
 }
 
-// --- Funkcja do benchmarku AI ---
-// *** ZMIANA: Funkcja przyjmuje 'algorithmToRun', aby uruchomić tylko jeden test ***
 void run_AI_Benchmark(std::vector<BenchmarkResult> &results, const std::string &algorithmToRun)
 {
-    std::cout << "\n\n==================================================" << std::endl;
-    std::cout << "   Testowanie algorytmu: " << algorithmToRun << " (Macierze AI)" << std::endl;
-    std::cout << "==================================================" << std::endl;
+    std::cout << "   Testing algorithm: " << algorithmToRun << " (AI Matrices)" << std::endl;
 
-    int max_n_level = 7; // Test do rozmiaru (4*2^7) x (5*2^7) = 512x640
-    // double processBaselineKB = getPeakPrivateUsageKB();
+    int max_n_level = 8; // Test (4*2^8) x (5*2^8) = 1024x1280 matrices
 
     for (int n = 0; n <= max_n_level; ++n)
     {
@@ -145,7 +123,7 @@ void run_AI_Benchmark(std::vector<BenchmarkResult> &results, const std::string &
 
         std::string dim_str = "(" + std::to_string(M) + "x" + std::to_string(K) + ") * (" +
                               std::to_string(K) + "x" + std::to_string(P) + ")";
-        std::cout << "\n--- Testowanie (Poziom n=" << n << "): " << dim_str << " ---" << std::endl;
+        std::cout << "\n--- Testing (Level n=" << n << "): " << dim_str << " ---" << std::endl;
 
         Matrix A = createMatrix(M, K, true);
         Matrix B = createMatrix(K, P, true);
@@ -156,8 +134,8 @@ void run_AI_Benchmark(std::vector<BenchmarkResult> &results, const std::string &
         double peakMem = 0, deltaMem = 0;
         std::chrono::duration<double, std::milli> duration(0);
 
-        Matrix C_benchmark;                   // Potrzebna do weryfikacji
-        if (algorithmToRun != "iterative_ai") // Używamy innej nazwy, by nie kolidować z NxN
+        Matrix C_benchmark;
+        if (algorithmToRun != "iterative_ai")
         {
             unsigned long long dummy_ops = 0;
             C_benchmark = iterativeMultiply(A, B, dummy_ops);
@@ -191,25 +169,22 @@ void run_AI_Benchmark(std::vector<BenchmarkResult> &results, const std::string &
         results.push_back({dim_str, algoName, ops, duration.count(), deltaMem, passed});
         std::cout << std::setw(10) << algoName << ": "
                   << std::fixed << std::setprecision(4) << duration.count() << " ms, "
-                  << deltaMem << " KB, Poprawny: " << (passed ? "TAK" : "NIE") << std::endl;
+                  << deltaMem << " KB, Correct: " << (passed ? "YES" : "NO") << std::endl;
 
         if (!passed)
         {
-            std::cout << "KRYTYCZNY BLAD: Algorytm nie dziala poprawnie. Zatrzymywanie." << std::endl;
+            std::cout << "CRITICAL ERROR: Algorithm did not work correctly. Stopping." << std::endl;
             break;
         }
-
-        // processBaselineKB = peakMem;
     }
 }
 
-// --- Funkcja do zapisu CSV ---
 void writeResultsToCSV(const std::string &filename, const std::vector<BenchmarkResult> &results)
 {
     std::ofstream csvfile(filename);
     if (!csvfile.is_open())
     {
-        std::cerr << "Nie mozna otworzyc pliku do zapisu: " << filename << std::endl;
+        std::cerr << "Cannot open file for writing: " << filename << std::endl;
         return;
     }
 
@@ -224,19 +199,19 @@ void writeResultsToCSV(const std::string &filename, const std::vector<BenchmarkR
                 << (res.passed ? "Yes" : "No") << "\n";
     }
     csvfile.close();
-    std::cout << "\nZapisano wyniki do pliku: " << filename << std::endl;
+    std::cout << "\nResults saved to file: " << filename << std::endl;
 }
 
 void printUsage()
 {
-    std::cout << "Blad: Nieprawidlowy argument." << std::endl;
-    std::cout << "Uzycie: ./benchmark.exe [TYP_ALGORYTMU]" << std::endl;
-    std::cout << "Dostepne typy algorytmow:" << std::endl;
-    std::cout << "  iterative (dla testu NxN)" << std::endl;
+    std::cout << "Error: Invalid argument." << std::endl;
+    std::cout << "Usage: ./benchmark.exe [ALGORITHM_TYPE]" << std::endl;
+    std::cout << "Available algorithm types:" << std::endl;
+    std::cout << "  iterative (for NxN test)" << std::endl;
     std::cout << "  strassen" << std::endl;
     std::cout << "  binet" << std::endl;
     std::cout << "  ai" << std::endl;
-    std::cout << "  iterative_ai (dla testu AI)" << std::endl;
+    std::cout << "  iterative_ai (for AI test)" << std::endl;
 }
 
 int main(int argc, char *argv[])
@@ -282,12 +257,11 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    // Zapisz wyniki do odpowiedniego pliku CSV
     if (!results.empty())
     {
         writeResultsToCSV(outputFilename, results);
     }
 
-    std::cout << "\nBenchmark dla '" << algorithmToRun << "' zakonczony." << std::endl;
+    std::cout << "\nBenchmark for '" << algorithmToRun << "' completed." << std::endl;
     return 0;
 }
