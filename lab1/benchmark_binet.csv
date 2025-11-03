@@ -1,0 +1,11 @@
+Dimensions,Algorithm,Operations,Duration_ms,Memory_kb,Passed
+"2x2",binet,12,0.0129,0,Yes
+"3x3",binet,45,0.0072,0,Yes
+"5x5",binet,225,0.0205,0,Yes
+"7x7",binet,637,0.0411,0,Yes
+"20x20",binet,15600,0.3613,12,Yes
+"50x50",binet,247500,9.5536,108,Yes
+"100x100",binet,1990000,68.1504,300,Yes
+"200x200",binet,15960000,523.82,1288,Yes
+"500x500",binet,249750000,4355.31,7636,Yes
+"1000x1000",binet,1999000000,37660.1,29888,Yes
