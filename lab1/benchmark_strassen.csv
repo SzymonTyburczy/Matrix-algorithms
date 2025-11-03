@@ -1,0 +1,11 @@
+Dimensions,Algorithm,Operations,Duration_ms,Memory_kb,Passed
+"2x2",strassen,25,0.0119,0,Yes
+"3x3",strassen,58,0.0047,0,Yes
+"5x5",strassen,360,0.03,0,Yes
+"7x7",strassen,809,0.0417,0,Yes
+"20x20",strassen,22590,1.266,36,Yes
+"50x50",strassen,280841,12.6072,208,Yes
+"100x100",strassen,2010887,72.7322,640,Yes
+"200x200",strassen,14256209,459.984,2536,Yes
+"500x500",strassen,170667086,3570.8,13808,Yes
+"1000x1000",strassen,1199169602,26518,55724,Yes

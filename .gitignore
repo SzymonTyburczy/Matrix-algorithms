@@ -1,0 +1,14 @@
+.vscode/
+.history/
+.idea/
+__pycache__/
+
+*.exe
+*.o
+*.obj
+
+
+*.tmp
+*.temp
+.cache/
+*.cache/
