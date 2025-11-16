@@ -95,6 +95,14 @@ Matrix multiply_recursive_wrapper(const Matrix &A, const Matrix &B, unsigned lon
     return C;
 }
 
+void multiply_binet_inplace(Matrix &C, int rC, int cC,
+                            const Matrix &A, int rA, int cA,
+                            const Matrix &B, int rB, int cB,
+                            int m, int k, int p, unsigned long long &op_count)
+{
+    recursiveMultiply(C, rC, cC, A, rA, cA, B, rB, cB, m, k, p, op_count);
+}
+
 /*
 int main(int argc, char *argv[])
 {

@@ -155,6 +155,22 @@ Matrix multiply_strassen_wrapper(const Matrix &A, const Matrix &B, unsigned long
 
     return C;
 }
+
+void multiply_strassen_inplace(Matrix &C, int rC, int cC,
+                               const Matrix &A, int rA, int cA,
+                               const Matrix &B, int rB, int cB,
+                               int m, int k, int p, unsigned long long &op_count)
+{
+    if (m != k || k != p)
+    {
+
+        iterativeMultiply_inplace(C, rC, cC, A, rA, cA, B, rB, cB, m, k, p, op_count);
+        return;
+    }
+
+    strassenRecursive(C, rC, cC, A, rA, cA, B, rB, cB, m, op_count);
+}
+
 /*
 int main(int argc, char *argv[])
 {

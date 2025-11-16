@@ -5,24 +5,17 @@
 #include <iomanip>
 #include <string>
 
+#include "helperFunctions.h"
 #include "HelperFunctionsLab2.h"
-
 #include "matrix_Strassen.h"
 #include "matrix_Binet.h"
-
-struct LU_Result
-{
-    Matrix L;
-    Matrix U;
-    double determinant;
-};
+#include "RecursiveLUFactorization.h"
 
 Matrix solve_left_unit_lower_triangular(const Matrix &L, const Matrix &B, unsigned long long &op_count)
 {
     int n = L.size();
     int m = B[0].size();
     Matrix X = createMatrix(n, m);
-
     for (int j = 0; j < m; ++j)
     {
         for (int i = 0; i < n; ++i)
@@ -45,7 +38,6 @@ Matrix solve_right_upper_triangular(const Matrix &A, const Matrix &U, unsigned l
     int n = U.size();
     int m = A.size();
     Matrix X = createMatrix(m, n);
-
     for (int i = 0; i < m; ++i)
     {
         for (int j = n - 1; j >= 0; --j)
@@ -56,12 +48,10 @@ Matrix solve_right_upper_triangular(const Matrix &A, const Matrix &U, unsigned l
                 sum += X[i][k] * U[k][j];
                 op_count += 2;
             }
-
             if (fabs(U[j][j]) < EPS)
             {
                 throw std::runtime_error("Zero diagonal element in solve_right_upper_triangular.");
             }
-
             X[i][j] = (A[i][j] - sum) / U[j][j];
             op_count += 2;
         }
@@ -70,14 +60,13 @@ Matrix solve_right_upper_triangular(const Matrix &A, const Matrix &U, unsigned l
 }
 
 LU_Result recursive_lu_factorization(const Matrix &A, unsigned long long &op_count,
-                                     MultiplyAlgorithm algo = MultiplyAlgorithm::ITERATIVE)
+                                     MultiplyAlgorithm algo)
 {
     int n = A.size();
     if (n == 0)
     {
         return {createMatrix(0, 0), createMatrix(0, 0), 1.0};
     }
-
     if (n == 1)
     {
         if (fabs(A[0][0]) < EPS)
@@ -105,20 +94,23 @@ LU_Result recursive_lu_factorization(const Matrix &A, unsigned long long &op_cou
     Matrix U12 = solve_left_unit_lower_triangular(L11, A12, op_count);
     Matrix L21 = solve_right_upper_triangular(A21, U11, op_count);
 
-    Matrix S_temp;
+    Matrix S_temp = createMatrix(n2, n2);
+
+    int m = L21.size();
+    int k = L21[0].size();
+    int p = U12[0].size();
+
     switch (algo)
     {
     case MultiplyAlgorithm::STRASSEN:
-        S_temp = multiply_strassen_wrapper(L21, U12, op_count);
+        multiply_strassen_inplace(S_temp, 0, 0, L21, 0, 0, U12, 0, 0, m, k, p, op_count);
         break;
-
     case MultiplyAlgorithm::BINET:
-        S_temp = multiply_recursive_wrapper(L21, U12, op_count);
+        multiply_binet_inplace(S_temp, 0, 0, L21, 0, 0, U12, 0, 0, m, k, p, op_count);
         break;
-
     case MultiplyAlgorithm::ITERATIVE:
     default:
-        S_temp = iterativeMultiply(L21, U12, op_count);
+        iterativeMultiply_inplace(S_temp, 0, 0, L21, 0, 0, U12, 0, 0, m, k, p, op_count);
         break;
     }
 
@@ -144,6 +136,7 @@ LU_Result recursive_lu_factorization(const Matrix &A, unsigned long long &op_cou
 
     return {L, U, total_determinant};
 }
+
 /*
 int main()
 {
@@ -151,8 +144,8 @@ int main()
     Matrix A = createMatrix(N, N, true);
 
     // MultiplyAlgorithm algo_to_use = MultiplyAlgorithm::ITERATIVE;
-    MultiplyAlgorithm algo_to_use = MultiplyAlgorithm::BINET;
-    // MultiplyAlgorithm algo_to_use = MultiplyAlgorithm::STRASSEN;
+    // MultiplyAlgorithm algo_to_use = MultiplyAlgorithm::BINET;
+    MultiplyAlgorithm algo_to_use = MultiplyAlgorithm::STRASSEN;
 
     std::string algo_name;
     switch (algo_to_use)

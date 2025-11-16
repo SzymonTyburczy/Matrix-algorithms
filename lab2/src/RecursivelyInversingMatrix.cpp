@@ -100,6 +100,7 @@ Matrix recursive_invert(const Matrix &A, unsigned long long &op_count, MultiplyA
     return recursive_invert_internal(A, op_count, algo);
 }
 
+/*
 int main()
 {
     int N = 4;
@@ -137,3 +138,4 @@ int main()
 
     return 0;
 }
+*/
