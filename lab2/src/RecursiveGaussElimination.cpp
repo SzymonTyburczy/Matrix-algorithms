@@ -191,6 +191,7 @@ std::vector<double> solve_block_gauss(Matrix A, std::vector<double> b,
     return solve_block_recursive(A, b, flop_count, 0, block_size);
 }
 
+/*
 int main()
 {
     int N = 7;
@@ -238,3 +239,4 @@ int main()
 
     return 0;
 }
+*/

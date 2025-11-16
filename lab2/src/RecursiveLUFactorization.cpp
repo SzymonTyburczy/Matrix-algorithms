@@ -5,18 +5,10 @@
 #include <iomanip>
 #include <string>
 
-#include "helperFunctions.h"
 #include "HelperFunctionsLab2.h"
 
 #include "matrix_Strassen.h"
 #include "matrix_Binet.h"
-
-enum class MultiplyAlgorithm
-{
-    ITERATIVE,
-    BINET,
-    STRASSEN
-};
 
 struct LU_Result
 {
@@ -24,18 +16,6 @@ struct LU_Result
     Matrix U;
     double determinant;
 };
-
-void copy_block_to_matrix(Matrix &Target, const Matrix &Source,
-                          int r_target, int c_target)
-{
-    for (size_t i = 0; i < Source.size(); ++i)
-    {
-        for (size_t j = 0; j < Source[0].size(); ++j)
-        {
-            Target[r_target + i][c_target + j] = Source[i][j];
-        }
-    }
-}
 
 Matrix solve_left_unit_lower_triangular(const Matrix &L, const Matrix &B, unsigned long long &op_count)
 {

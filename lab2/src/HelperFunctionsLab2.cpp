@@ -101,3 +101,15 @@ std::vector<double> solve_upper_triangular(const Matrix &U, const std::vector<do
 
     return x;
 }
+
+void copy_block_to_matrix(Matrix &Target, const Matrix &Source,
+                          int r_target, int c_target)
+{
+    for (size_t i = 0; i < Source.size(); ++i)
+    {
+        for (size_t j = 0; j < Source[0].size(); ++j)
+        {
+            Target[r_target + i][c_target + j] = Source[i][j];
+        }
+    }
+}
