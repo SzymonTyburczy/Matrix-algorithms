@@ -39,7 +39,7 @@ void printVector(const std::vector<double> &v)
 
 std::vector<double> solve_lower_triangular(const Matrix &L, const std::vector<double> &b, unsigned long long &op_count)
 {
-    int n = L.size();
+    size_t n = L.size();
     if (n == 0)
         return {};
     if (n != b.size() || n != L[0].size())
@@ -49,10 +49,10 @@ std::vector<double> solve_lower_triangular(const Matrix &L, const std::vector<do
 
     std::vector<double> x(n);
 
-    for (int i = 0; i < n; ++i)
+    for (size_t i = 0; i < n; ++i)
     {
         double sum = 0.0;
-        for (int j = 0; j < i; ++j)
+        for (size_t j = 0; j < i; ++j)
         {
             sum += L[i][j] * x[j];
             op_count += 2;
@@ -72,7 +72,7 @@ std::vector<double> solve_lower_triangular(const Matrix &L, const std::vector<do
 
 std::vector<double> solve_upper_triangular(const Matrix &U, const std::vector<double> &b, unsigned long long &op_count)
 {
-    int n = U.size();
+    size_t n = U.size();
     if (n == 0)
         return {};
     if (n != b.size() || n != U[0].size())
@@ -82,10 +82,10 @@ std::vector<double> solve_upper_triangular(const Matrix &U, const std::vector<do
 
     std::vector<double> x(n);
 
-    for (int i = n - 1; i >= 0; --i)
+    for (size_t i = n; i-- > 0;)
     {
         double sum = 0.0;
-        for (int j = i + 1; j < n; ++j)
+        for (size_t j = i + 1; j < n; ++j)
         {
             sum += U[i][j] * x[j];
             op_count += 2;

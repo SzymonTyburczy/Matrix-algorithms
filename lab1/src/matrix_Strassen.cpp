@@ -148,7 +148,7 @@ Matrix multiply_strassen_wrapper(const Matrix &A, const Matrix &B, unsigned long
         throw std::invalid_argument("Input matrices are not square and of the same size N.");
     }
 
-    op_count = 0;
+    // op_count = 0;
     Matrix C = createMatrix(n, n);
 
     strassenRecursive(C, 0, 0, A, 0, 0, B, 0, 0, n, op_count);

@@ -83,7 +83,7 @@ Matrix multiply_recursive_wrapper(const Matrix &A, const Matrix &B, unsigned lon
         throw std::invalid_argument("Incompatible matrix dimensions for multiplication.");
     }
 
-    op_count = 0;
+    // op_count = 0;
     size_t m = A.size();
     size_t k = A[0].size();
     size_t p = B[0].size();
