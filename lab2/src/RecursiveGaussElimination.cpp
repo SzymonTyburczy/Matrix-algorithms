@@ -9,25 +9,29 @@ using Matrix = std::vector<std::vector<double>>;
 
 const double EPS = 1e-12;
 
-std::vector<double> solve_recursive_gauss(Matrix A, std::vector<double> b, long long &flop_count)
+std::vector<double> solve_recursive_internal(Matrix &A, std::vector<double> &b, long long &flop_count, int offset)
 {
-    int n = A.size();
-    if (n == 0)
+    int n_total = A.size();
+    int current_size = n_total - offset;
+
+    if (current_size == 0)
         return {};
-    if (n == 1)
+
+    if (current_size == 1)
     {
-        if (fabs(A[0][0]) < EPS)
+        if (fabs(A[offset][offset]) < EPS)
             throw std::runtime_error("Zero pivot in base case");
 
         flop_count++;
-        return std::vector<double>{b[0] / A[0][0]};
+        return std::vector<double>{b[offset] / A[offset][offset]};
     }
 
-    int piv = 0;
-    double maxv = fabs(A[0][0]);
-    for (int i = 1; i < n; i++)
+    int piv = offset;
+    double maxv = fabs(A[offset][offset]);
+
+    for (int i = offset + 1; i < n_total; i++)
     {
-        double av = fabs(A[i][0]);
+        double av = fabs(A[i][offset]);
         if (av > maxv)
         {
             maxv = av;
@@ -37,65 +41,52 @@ std::vector<double> solve_recursive_gauss(Matrix A, std::vector<double> b, long 
     if (maxv < EPS)
         throw std::runtime_error("Matrix is singular (pivot ~ 0)");
 
-    if (piv != 0)
+    if (piv != offset)
     {
-        std::swap(A[0], A[piv]);
-        std::swap(b[0], b[piv]);
+        std::swap(A[offset], A[piv]);
+        std::swap(b[offset], b[piv]);
     }
 
-    // --- Faza eliminacji ---
-    for (int i = 1; i < n; i++)
+    for (int i = offset + 1; i < n_total; i++)
     {
-        // 1 operacja: A[i][0] / A[0][0]
-        double factor = A[i][0] / A[0][0];
-        flop_count++; // <-- ZLICZANIE (1 dzielenie)
+        double factor = A[i][offset] / A[offset][offset];
+        flop_count++;
 
-        A[i][0] = 0.0;
-        for (int j = 1; j < n; j++)
+        A[i][offset] = 0.0;
+        for (int j = offset + 1; j < n_total; j++)
         {
-            // 2 operacje: (factor * A[0][j]) i (... -= ...)
-            A[i][j] -= factor * A[0][j];
-            flop_count += 2; // <-- ZLICZANIE (1 mnożenie, 1 odejmowanie)
+            A[i][j] -= factor * A[offset][j];
+            flop_count += 2;
         }
 
-        // 2 operacje: (factor * b[0]) i (... -= ...)
-        b[i] -= factor * b[0];
-        flop_count += 2; // <-- ZLICZANIE (1 mnożenie, 1 odejmowanie)
+        b[i] -= factor * b[offset];
+        flop_count += 2;
     }
 
-    // --- Przygotowanie do rekurencji (kopiowanie, brak FLOPS) ---
-    Matrix A_sub(n - 1, std::vector<double>(n - 1));
-    std::vector<double> b_sub(n - 1);
-    for (int i = 1; i < n; i++)
-    {
-        for (int j = 1; j < n; j++)
-            A_sub[i - 1][j - 1] = A[i][j];
-        b_sub[i - 1] = b[i];
-    }
+    std::vector<double> x_sub = solve_recursive_internal(A, b, flop_count, offset + 1);
 
-    // Wywołanie rekurencyjne: 'flop_count' jest aktualizowany wewnątrz
-    std::vector<double> x_sub = solve_recursive_gauss(A_sub, b_sub, flop_count);
-
-    // --- Faza podstawiania wstecznego ---
-    std::vector<double> x(n);
+    std::vector<double> x(current_size);
     double s = 0.0;
-    for (int j = 1; j < n; j++)
+
+    for (int j = offset + 1; j < n_total; j++)
     {
-        // 2 operacje: (A[0][j] * x_sub[j - 1]) i (s += ...)
-        s += A[0][j] * x_sub[j - 1];
-        flop_count += 2; // <-- ZLICZANIE (1 mnożenie, 1 dodawanie)
+        s += A[offset][j] * x_sub[j - (offset + 1)];
+        flop_count += 2;
     }
 
-    // 2 operacje: (b[0] - s) i (... / A[0][0])
-    x[0] = (b[0] - s) / A[0][0];
-    flop_count += 2; // <-- ZLICZANIE (1 odejmowanie, 1 dzielenie)
+    x[0] = (b[offset] - s) / A[offset][offset];
+    flop_count += 2;
 
-    for (int i = 1; i < n; i++)
+    for (int i = 1; i < current_size; i++)
         x[i] = x_sub[i - 1];
+
     return x;
 }
 
-// ----- Funkcje pomocnicze (bez zmian) -----
+std::vector<double> solve_recursive_gauss(Matrix A, std::vector<double> b, long long &flop_count)
+{
+    return solve_recursive_internal(A, b, flop_count, 0);
+}
 
 void print_vector(const std::vector<double> &v)
 {
@@ -120,8 +111,6 @@ void print_matrix(const Matrix &M)
     }
 }
 
-// ----- Zmodyfikowana funkcja main -----
-
 int main()
 {
     Matrix A = {
@@ -131,22 +120,19 @@ int main()
     std::vector<double> b = {8, -11, -3};
 
     std::cout << "### Test 1: Rozwiazywanie ukladu Ax = b ###" << std::endl;
-    std::cout << "Macierz A:" << std::endl;
+    std::cout << "Macierz A (przed wywolaniem):" << std::endl;
     print_matrix(A);
-    std::cout << "Wektor b:" << std::endl;
+    std::cout << "Wektor b (przed wywolaniem):" << std::endl;
     print_vector(b);
 
-    // Inicjujemy licznik FLOPS
     long long total_flops = 0;
 
     try
     {
-        // Przekazujemy licznik do funkcji
         std::vector<double> x = solve_recursive_gauss(A, b, total_flops);
         std::cout << "\nRozwiazanie x:" << std::endl;
         print_vector(x);
 
-        // Wyświetlamy wynik zliczania
         std::cout << "\nLaczna liczba operacji zmiennoprzecinkowych (FLOPS): "
                   << total_flops << std::endl;
     }
@@ -158,6 +144,10 @@ int main()
     std::cout << "\n"
               << std::string(40, '-') << "\n"
               << std::endl;
+
+    // Możemy sprawdzić, że oryginalna macierz A w main nie została zmieniona
+    // std::cout << "Macierz A (po wywolaniu w main):" << std::endl;
+    // print_matrix(A);
 
     return 0;
 }
