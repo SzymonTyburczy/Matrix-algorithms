@@ -9,29 +9,7 @@
 #include "HelperFunctionsLab2.h"
 #include "matrix_Strassen.h"
 #include "matrix_Binet.h"
-
-Matrix multiply_wrapper(const Matrix &A, const Matrix &B, unsigned long long &op_count, MultiplyAlgorithm algo)
-{
-    if (A.empty() || B.empty() || A[0].size() != B.size())
-    {
-        throw std::runtime_error("Incompatible matrix dimensions for multiplication.");
-    }
-    if (A.size() == 0 || A[0].size() == 0 || B.size() == 0 || B[0].size() == 0)
-    {
-        return createMatrix(A.size(), B[0].size());
-    }
-
-    switch (algo)
-    {
-    case MultiplyAlgorithm::STRASSEN:
-        return multiply_strassen_wrapper(A, B, op_count);
-    case MultiplyAlgorithm::BINET:
-        return multiply_recursive_wrapper(A, B, op_count);
-    case MultiplyAlgorithm::ITERATIVE:
-    default:
-        return iterativeMultiply(A, B, op_count);
-    }
-}
+#include "RecursiveLUFactorization.h"
 
 Matrix recursive_invert_internal(const Matrix &A, unsigned long long &op_count, MultiplyAlgorithm algo)
 {
@@ -61,24 +39,96 @@ Matrix recursive_invert_internal(const Matrix &A, unsigned long long &op_count, 
 
     Matrix A11_inv = recursive_invert_internal(A11, op_count, algo);
 
-    Matrix S_temp1 = multiply_wrapper(A21, A11_inv, op_count, algo);
+    Matrix S_temp1 = createMatrix(n2, n1);
+    switch (algo)
+    {
+    case MultiplyAlgorithm::STRASSEN:
+        multiply_strassen_inplace(S_temp1, 0, 0, A21, 0, 0, A11_inv, 0, 0, n2, n1, n1, op_count);
+        break;
+    case MultiplyAlgorithm::BINET:
+        multiply_binet_inplace(S_temp1, 0, 0, A21, 0, 0, A11_inv, 0, 0, n2, n1, n1, op_count);
+        break;
+    default:
+        iterativeMultiply_inplace(S_temp1, 0, 0, A21, 0, 0, A11_inv, 0, 0, n2, n1, n1, op_count);
+        break;
+    }
 
-    Matrix S_temp2 = multiply_wrapper(S_temp1, A12, op_count, algo);
+    Matrix S_temp2 = createMatrix(n2, n2);
+    switch (algo)
+    {
+    case MultiplyAlgorithm::STRASSEN:
+        multiply_strassen_inplace(S_temp2, 0, 0, S_temp1, 0, 0, A12, 0, 0, n2, n1, n2, op_count);
+        break;
+    case MultiplyAlgorithm::BINET:
+        multiply_binet_inplace(S_temp2, 0, 0, S_temp1, 0, 0, A12, 0, 0, n2, n1, n2, op_count);
+        break;
+    default:
+        iterativeMultiply_inplace(S_temp2, 0, 0, S_temp1, 0, 0, A12, 0, 0, n2, n1, n2, op_count);
+        break;
+    }
 
     Matrix S = subtractMatrices(A22, S_temp2, op_count);
 
     Matrix S_inv = recursive_invert_internal(S, op_count, algo);
     Matrix B22 = S_inv;
 
-    Matrix T1 = multiply_wrapper(A11_inv, A12, op_count, algo);
+    Matrix T1 = createMatrix(n1, n2);
+    switch (algo)
+    {
+    case MultiplyAlgorithm::STRASSEN:
+        multiply_strassen_inplace(T1, 0, 0, A11_inv, 0, 0, A12, 0, 0, n1, n1, n2, op_count);
+        break;
+    case MultiplyAlgorithm::BINET:
+        multiply_binet_inplace(T1, 0, 0, A11_inv, 0, 0, A12, 0, 0, n1, n1, n2, op_count);
+        break;
+    default:
+        iterativeMultiply_inplace(T1, 0, 0, A11_inv, 0, 0, A12, 0, 0, n1, n1, n2, op_count);
+        break;
+    }
 
-    Matrix B12_temp = multiply_wrapper(T1, S_inv, op_count, algo);
+    Matrix B12_temp = createMatrix(n1, n2);
+    switch (algo)
+    {
+    case MultiplyAlgorithm::STRASSEN:
+        multiply_strassen_inplace(B12_temp, 0, 0, T1, 0, 0, S_inv, 0, 0, n1, n2, n2, op_count);
+        break;
+    case MultiplyAlgorithm::BINET:
+        multiply_binet_inplace(B12_temp, 0, 0, T1, 0, 0, S_inv, 0, 0, n1, n2, n2, op_count);
+        break;
+    default:
+        iterativeMultiply_inplace(B12_temp, 0, 0, T1, 0, 0, S_inv, 0, 0, n1, n2, n2, op_count);
+        break;
+    }
     Matrix B12 = subtractMatrices(createMatrix(n1, n2), B12_temp, op_count);
 
-    Matrix B21_temp = multiply_wrapper(S_inv, S_temp1, op_count, algo);
+    Matrix B21_temp = createMatrix(n2, n1);
+    switch (algo)
+    {
+    case MultiplyAlgorithm::STRASSEN:
+        multiply_strassen_inplace(B21_temp, 0, 0, S_inv, 0, 0, S_temp1, 0, 0, n2, n2, n1, op_count);
+        break;
+    case MultiplyAlgorithm::BINET:
+        multiply_binet_inplace(B21_temp, 0, 0, S_inv, 0, 0, S_temp1, 0, 0, n2, n2, n1, op_count);
+        break;
+    default:
+        iterativeMultiply_inplace(B21_temp, 0, 0, S_inv, 0, 0, S_temp1, 0, 0, n2, n2, n1, op_count);
+        break;
+    }
     Matrix B21 = subtractMatrices(createMatrix(n2, n1), B21_temp, op_count);
 
-    Matrix B11_temp = multiply_wrapper(T1, B21, op_count, algo);
+    Matrix B11_temp = createMatrix(n1, n1);
+    switch (algo)
+    {
+    case MultiplyAlgorithm::STRASSEN:
+        multiply_strassen_inplace(B11_temp, 0, 0, T1, 0, 0, B21, 0, 0, n1, n2, n1, op_count);
+        break;
+    case MultiplyAlgorithm::BINET:
+        multiply_binet_inplace(B11_temp, 0, 0, T1, 0, 0, B21, 0, 0, n1, n2, n1, op_count);
+        break;
+    default:
+        iterativeMultiply_inplace(B11_temp, 0, 0, T1, 0, 0, B21, 0, 0, n1, n2, n1, op_count);
+        break;
+    }
 
     Matrix B11 = subtractMatrices(A11_inv, B11_temp, op_count);
 
@@ -95,7 +145,7 @@ Matrix recursive_invert(const Matrix &A, unsigned long long &op_count, MultiplyA
 {
     if (A.size() != A[0].size() || A.empty())
     {
-        throw std::invalid_argument("Mtrix must be square and non-empty to be inverted.");
+        throw std::invalid_argument("Matrix must be square and non-empty to be inverted.");
     }
     return recursive_invert_internal(A, op_count, algo);
 }
@@ -107,7 +157,22 @@ int main()
     Matrix A = createMatrix(N, N, true);
 
     MultiplyAlgorithm algo_to_use = MultiplyAlgorithm::ITERATIVE;
-    std::string algo_name = "Iterative";
+    // MultiplyAlgorithm algo_to_use = MultiplyAlgorithm::BINET;
+    // MultiplyAlgorithm algo_to_use = MultiplyAlgorithm::STRASSEN;
+
+    std::string algo_name;
+    switch (algo_to_use)
+    {
+    case MultiplyAlgorithm::STRASSEN:
+        algo_name = "Strassen";
+        break;
+    case MultiplyAlgorithm::BINET:
+        algo_name = "Binet";
+        break;
+    default:
+        algo_name = "Iterative";
+        break;
+    }
 
     std::cout << "Original Matrix A:" << std::endl;
     printMatrix(A);

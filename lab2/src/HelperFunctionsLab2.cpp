@@ -3,6 +3,8 @@
 #include <stdexcept>
 #include <cmath>
 #include <cstdio>
+#include <windows.h>
+#include <psapi.h>
 
 const double EPS = 1e-12;
 
@@ -17,6 +19,16 @@ Matrix get_submatrix(const Matrix &A, int r_start, int c_start, int num_rows, in
         }
     }
     return sub;
+}
+
+double getPeakCommitChargeKB()
+{
+    PROCESS_MEMORY_COUNTERS pmc;
+    if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)))
+    {
+        return pmc.PeakPagefileUsage / 1024.0;
+    }
+    return 0;
 }
 
 std::vector<double> get_subvector(const std::vector<double> &b, int r_start, int num_rows)

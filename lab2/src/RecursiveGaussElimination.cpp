@@ -9,6 +9,7 @@
 
 #include "helperFunctions.h"
 #include "HelperFunctionsLab2.h"
+
 #include "RecursiveLUFactorization.h"
 #include "matrix_Strassen.h"
 #include "matrix_Binet.h"
@@ -92,6 +93,26 @@ std::vector<double> solve_block_recursive(Matrix &A, std::vector<double> &b,
         return solve_pointwise_internal(A, b, flop_count, offset, n_total);
     }
 
+    int piv = offset;
+    double maxv = fabs(A[offset][offset]);
+    for (int i = offset + 1; i < n_total; i++)
+    {
+        double av = fabs(A[i][offset]);
+        if (av > maxv)
+        {
+            maxv = av;
+            piv = i;
+        }
+    }
+    if (maxv < EPS)
+        throw std::runtime_error("Matrix singular (block pivot)");
+
+    if (piv != offset)
+    {
+        std::swap(A[offset], A[piv]);
+        std::swap(b[offset], b[piv]);
+    }
+
     int b_size = block_size;
     int r_size = current_size - b_size;
 
@@ -120,38 +141,43 @@ std::vector<double> solve_block_recursive(Matrix &A, std::vector<double> &b,
     std::vector<double> b1 = get_subvector(b, r11, b_size);
     std::vector<double> y = solve_using_lu(lu11.L, lu11.U, b1, flop_count);
 
-    Matrix A21 = get_submatrix(A, r21, c21, r_size, b_size);
-    Matrix A21_X;
+    Matrix A21_X = createMatrix(r_size, r_size);
+
+    Matrix A21;
 
     switch (algo)
     {
     case MultiplyAlgorithm::STRASSEN:
+
+        A21 = get_submatrix(A, r21, c21, r_size, b_size);
         multiply_strassen_inplace(A21_X, 0, 0,
-                                  A, r21, c21,
+                                  A21, 0, 0,
                                   X, 0, 0,
                                   r_size, b_size, r_size,
                                   flop_count);
         break;
     case MultiplyAlgorithm::BINET:
+        A21 = get_submatrix(A, r21, c21, r_size, b_size);
         multiply_binet_inplace(A21_X, 0, 0,
-                               A, r21, c21,
+                               A21, 0, 0,
                                X, 0, 0,
                                r_size, b_size, r_size,
                                flop_count);
         break;
     case MultiplyAlgorithm::ITERATIVE:
     default:
-        iterativeMultiply_inplace(A21_X, 0, 0,            // C
-                                  A, r21, c21,            // A
-                                  X, 0, 0,                // B
-                                  r_size, b_size, r_size, // m, k, p
+
+        iterativeMultiply_inplace(A21_X, 0, 0,
+                                  A, r21, c21,
+                                  X, 0, 0,
+                                  r_size, b_size, r_size,
                                   flop_count);
         break;
     }
 
-    subtractMatrices_inplace(A, r22, c22, // C (A22)
-                             A, r22, c22, // A (A22)
-                             A21_X, 0, 0, // B (A21_X)
+    subtractMatrices_inplace(A, r22, c22,
+                             A, r22, c22,
+                             A21_X, 0, 0,
                              r_size, r_size,
                              flop_count);
 
@@ -213,15 +239,15 @@ std::vector<double> solve_block_gauss(Matrix A, std::vector<double> b,
 
     return solve_block_recursive(A, b, flop_count, 0, block_size, algo);
 }
-
+/*
 int main()
 {
     int N = 8;
     int BLOCK_SIZE = 2;
 
-    MultiplyAlgorithm algo_to_use = MultiplyAlgorithm::ITERATIVE;
+    // MultiplyAlgorithm algo_to_use = MultiplyAlgorithm::ITERATIVE;
     // MultiplyAlgorithm algo_to_use = MultiplyAlgorithm::BINET;
-    // MultiplyAlgorithm algo_to_use = MultiplyAlgorithm::STRASSEN;
+    MultiplyAlgorithm algo_to_use = MultiplyAlgorithm::STRASSEN;
 
     std::string algo_name;
     switch (algo_to_use)
@@ -278,3 +304,4 @@ int main()
 
     return 0;
 }
+*/
