@@ -3,10 +3,6 @@ import pandas as pd
 import numpy as np
 import sys
 
-# --- Konfiguracja ---
-# Lista plików do przetworzenia. 
-# Klucz (str) to nazwa pliku CSV.
-# Wartość (str) to prefiks, który pojawi się w tytułach wykresów i nazwach plików PNG.
 FILES_TO_PLOT = {
     "benchmark_gauss.csv": "Gauss",
     "benchmark_lu.csv": "LU",
