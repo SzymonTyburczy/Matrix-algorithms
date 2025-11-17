@@ -28,10 +28,10 @@ struct BenchmarkResult
     double memory_kb;
 };
 
-std::vector<int> getTestSizes()
+std::vector<int> getTestSizes(int maxSize)
 {
     std::vector<int> sizes;
-    for (int i = 1; i <= 500; ++i)
+    for (int i = 1; i <= maxSize; ++i)
     {
         sizes.push_back(i);
     }
@@ -65,10 +65,10 @@ std::vector<double> matrixVectorMultiply(const Matrix &A, const std::vector<doub
     return b;
 }
 
-void run_Gauss_Benchmark(std::vector<BenchmarkResult> &results, MultiplyAlgorithm algo, const std::string &algoName)
+void run_Gauss_Benchmark(std::vector<BenchmarkResult> &results, MultiplyAlgorithm algo, const std::string &algoName, int maxSize)
 {
     std::cout << "\n--- Running Test: Gauss Elimination (Multiplying: " << algoName << ") ---" << std::endl;
-    std::vector<int> sizes = getTestSizes();
+    std::vector<int> sizes = getTestSizes(maxSize);
 
     for (int n : sizes)
     {
@@ -106,10 +106,10 @@ void run_Gauss_Benchmark(std::vector<BenchmarkResult> &results, MultiplyAlgorith
     }
 }
 
-void run_LU_Benchmark(std::vector<BenchmarkResult> &results, MultiplyAlgorithm algo, const std::string &algoName)
+void run_LU_Benchmark(std::vector<BenchmarkResult> &results, MultiplyAlgorithm algo, const std::string &algoName, int maxSize)
 {
     std::cout << "\n--- Running Test: LU Factorization (Multiplying: " << algoName << ") ---" << std::endl;
-    std::vector<int> sizes = getTestSizes();
+    std::vector<int> sizes = getTestSizes(maxSize);
 
     for (int n : sizes)
     {
@@ -145,10 +145,10 @@ void run_LU_Benchmark(std::vector<BenchmarkResult> &results, MultiplyAlgorithm a
     }
 }
 
-void run_Invert_Benchmark(std::vector<BenchmarkResult> &results, MultiplyAlgorithm algo, const std::string &algoName)
+void run_Invert_Benchmark(std::vector<BenchmarkResult> &results, MultiplyAlgorithm algo, const std::string &algoName, int maxSize)
 {
     std::cout << "\n--- Running Test: Matrix Inversion (Multiplying: " << algoName << ") ---" << std::endl;
-    std::vector<int> sizes = getTestSizes();
+    std::vector<int> sizes = getTestSizes(maxSize);
 
     for (int n : sizes)
     {
@@ -219,42 +219,43 @@ void printUsage()
 
 int main(int argc, char *argv[])
 {
-    if (argc != 2)
+    if (argc != 3)
     {
         printUsage();
         return 1;
     }
 
     std::string testToRun = argv[1];
+    int maxSize = std::stoi(argv[2]);
     std::vector<BenchmarkResult> results;
     std::string outputFilename;
 
     if (testToRun == "gauss")
     {
-        run_Gauss_Benchmark(results, MultiplyAlgorithm::BINET, "Binet");
-        run_Gauss_Benchmark(results, MultiplyAlgorithm::STRASSEN, "Strassen");
+        run_Gauss_Benchmark(results, MultiplyAlgorithm::BINET, "Binet", maxSize);
+        run_Gauss_Benchmark(results, MultiplyAlgorithm::STRASSEN, "Strassen", maxSize);
         outputFilename = "benchmark_gauss.csv";
     }
     else if (testToRun == "lu")
     {
-        run_LU_Benchmark(results, MultiplyAlgorithm::BINET, "Binet");
-        run_LU_Benchmark(results, MultiplyAlgorithm::STRASSEN, "Strassen");
+        run_LU_Benchmark(results, MultiplyAlgorithm::BINET, "Binet", maxSize);
+        run_LU_Benchmark(results, MultiplyAlgorithm::STRASSEN, "Strassen", maxSize);
         outputFilename = "benchmark_lu.csv";
     }
     else if (testToRun == "invert")
     {
-        run_Invert_Benchmark(results, MultiplyAlgorithm::BINET, "Binet");
-        run_Invert_Benchmark(results, MultiplyAlgorithm::STRASSEN, "Strassen");
+        run_Invert_Benchmark(results, MultiplyAlgorithm::BINET, "Binet", maxSize);
+        run_Invert_Benchmark(results, MultiplyAlgorithm::STRASSEN, "Strassen", maxSize);
         outputFilename = "benchmark_invert.csv";
     }
     else if (testToRun == "all")
     {
-        run_Gauss_Benchmark(results, MultiplyAlgorithm::BINET, "Binet");
-        run_Gauss_Benchmark(results, MultiplyAlgorithm::STRASSEN, "Strassen");
-        run_LU_Benchmark(results, MultiplyAlgorithm::BINET, "Binet");
-        run_LU_Benchmark(results, MultiplyAlgorithm::STRASSEN, "Strassen");
-        run_Invert_Benchmark(results, MultiplyAlgorithm::BINET, "Binet");
-        run_Invert_Benchmark(results, MultiplyAlgorithm::STRASSEN, "Strassen");
+        run_Gauss_Benchmark(results, MultiplyAlgorithm::BINET, "Binet", maxSize);
+        run_Gauss_Benchmark(results, MultiplyAlgorithm::STRASSEN, "Strassen", maxSize);
+        run_LU_Benchmark(results, MultiplyAlgorithm::BINET, "Binet", maxSize);
+        run_LU_Benchmark(results, MultiplyAlgorithm::STRASSEN, "Strassen", maxSize);
+        run_Invert_Benchmark(results, MultiplyAlgorithm::BINET, "Binet", maxSize);
+        run_Invert_Benchmark(results, MultiplyAlgorithm::STRASSEN, "Strassen", maxSize);
         outputFilename = "benchmark_all.csv";
     }
     else
