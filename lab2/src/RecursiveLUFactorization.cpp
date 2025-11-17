@@ -38,20 +38,23 @@ Matrix solve_right_upper_triangular(const Matrix &A, const Matrix &U, unsigned l
     int n = U.size();
     int m = A.size();
     Matrix X = createMatrix(m, n);
+
     for (int i = 0; i < m; ++i)
     {
-        for (int j = n - 1; j >= 0; --j)
+        for (int j = 0; j < n; ++j)
         {
             double sum = 0.0;
-            for (int k = j + 1; k < n; ++k)
+            for (int k = 0; k < j; ++k)
             {
                 sum += X[i][k] * U[k][j];
                 op_count += 2;
             }
+
             if (fabs(U[j][j]) < EPS)
             {
                 throw std::runtime_error("Zero diagonal element in solve_right_upper_triangular.");
             }
+
             X[i][j] = (A[i][j] - sum) / U[j][j];
             op_count += 2;
         }

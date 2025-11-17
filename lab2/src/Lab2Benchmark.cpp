@@ -31,7 +31,7 @@ struct BenchmarkResult
 std::vector<int> getTestSizes()
 {
     std::vector<int> sizes;
-    for (int i = 1; i <= 50; ++i)
+    for (int i = 1; i <= 500; ++i)
     {
         sizes.push_back(i);
     }
@@ -79,7 +79,7 @@ void run_Gauss_Benchmark(std::vector<BenchmarkResult> &results, MultiplyAlgorith
         double peakMemKB = 0;
         std::chrono::duration<double, std::milli> duration(0);
 
-        double baselinePeakMemKB = getPeakCommitChargeKB();
+        resetPeakAllocation();
 
         try
         {
@@ -94,8 +94,7 @@ void run_Gauss_Benchmark(std::vector<BenchmarkResult> &results, MultiplyAlgorith
             auto end = std::chrono::high_resolution_clock::now();
             duration = end - start;
 
-            double finalPeakMemKB = getPeakCommitChargeKB();
-            peakMemKB = finalPeakMemKB - baselinePeakMemKB;
+            peakMemKB = getPeakAllocationKB();
         }
         catch (const std::exception &e)
         {
@@ -121,7 +120,7 @@ void run_LU_Benchmark(std::vector<BenchmarkResult> &results, MultiplyAlgorithm a
         double peakMemKB = 0;
         std::chrono::duration<double, std::milli> duration(0);
 
-        double baselinePeakMemKB = getPeakCommitChargeKB();
+        resetPeakAllocation();
 
         try
         {
@@ -134,8 +133,7 @@ void run_LU_Benchmark(std::vector<BenchmarkResult> &results, MultiplyAlgorithm a
             auto end = std::chrono::high_resolution_clock::now();
             duration = end - start;
 
-            double finalPeakMemKB = getPeakCommitChargeKB();
-            peakMemKB = finalPeakMemKB - baselinePeakMemKB;
+            peakMemKB = getPeakAllocationKB();
         }
         catch (const std::exception &e)
         {
@@ -161,7 +159,7 @@ void run_Invert_Benchmark(std::vector<BenchmarkResult> &results, MultiplyAlgorit
         double peakMemKB = 0;
         std::chrono::duration<double, std::milli> duration(0);
 
-        double baselinePeakMemKB = getPeakCommitChargeKB();
+        resetPeakAllocation();
 
         try
         {
@@ -174,8 +172,7 @@ void run_Invert_Benchmark(std::vector<BenchmarkResult> &results, MultiplyAlgorit
             auto end = std::chrono::high_resolution_clock::now();
             duration = end - start;
 
-            double finalPeakMemKB = getPeakCommitChargeKB();
-            peakMemKB = finalPeakMemKB - baselinePeakMemKB;
+            peakMemKB = getPeakAllocationKB();
         }
         catch (const std::exception &e)
         {

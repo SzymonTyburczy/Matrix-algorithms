@@ -8,7 +8,30 @@
 
 // Normally, Strassen's algorithm is not efficient for very small matrices due to overhead.
 // const int STRASSEN_LEAF_SIZE = 16;
-const int STRASSEN_LEAF_SIZE = 0; // for demonstration, set to 0 to always use Strassen's method
+const int STRASSEN_LEAF_SIZE = 4; // for demonstration, set to 0 to always use Strassen's method
+
+void iterativeMultiply_add_inplace(Matrix &C, int rC, int cC,
+                                   const Matrix &A, int rA, int cA,
+                                   const Matrix &B, int rB, int cB,
+                                   int m, int k, int p, unsigned long long &op_count)
+{
+    for (int i = 0; i < m; ++i)
+    {
+        for (int j = 0; j < p; ++j)
+        {
+            double sum = 0.0;
+            for (int l = 0; l < k; ++l)
+            {
+
+                sum += A[rA + i][cA + l] * B[rB + l][cB + j];
+                op_count += 2;
+            }
+
+            C[rC + i][cC + j] += sum;
+            op_count++;
+        }
+    }
+}
 
 using Matrix = std::vector<std::vector<double>>;
 
@@ -97,42 +120,55 @@ void strassenRecursive(Matrix &C, int rC, int cC,
     {
         int n1 = size - 1;
 
-        // recursion (n-1)x(n-1) top left A11*B11
         strassenRecursive(C, rC, cC, A, rA, cA, B, rB, cB, n1, op_count);
 
-        Matrix C11_p2 = createMatrix(n1, n1);
-        // extra term: A11_right * B_bottomLeft
-        iterativeMultiply_inplace(C11_p2, 0, 0, A, rA, cA + n1, B, rB + n1, cB, n1, 1, n1, op_count);
+        // recursion (n-1)x(n-1) top left A11*B11
+        iterativeMultiply_add_inplace(C, rC, cC,
+                                      A, rA, cA + n1,
+                                      B, rB + n1, cB,
+                                      n1, 1, n1, op_count);
 
-        // add to C11
-        addMatrices_inplace(C, rC, cC, C, rC, cC, C11_p2, 0, 0, n1, n1, op_count);
+        // 3. C12 = A11 * B12 (iteracyjnie, nadpisanie)
+        //    (A: n1 x n1) * (B: n1 x 1) -> (C: n1 x 1)
+        iterativeMultiply_inplace(C, rC, cC + n1,
+                                  A, rA, cA,
+                                  B, rB, cB + n1,
+                                  n1, n1, 1, op_count);
 
-        // C12 (top-right) += A11 * B_rightCol
-        iterativeMultiply_inplace(C, rC, cC + n1, A, rA, cA, B, rB, cB + n1, n1, n1, 1, op_count);
+        // 4. C12 += A12 * B22 (iteracyjnie, dodawanie)
+        //    (A: n1 x 1) * (B: 1 x 1) -> (C: n1 x 1)
+        iterativeMultiply_add_inplace(C, rC, cC + n1,
+                                      A, rA, cA + n1,
+                                      B, rB + n1, cB + n1,
+                                      n1, 1, 1, op_count);
 
-        Matrix C12_p2 = createMatrix(n1, 1);
-        // additional for C12: A11_right * B_bottomRight
-        iterativeMultiply_inplace(C12_p2, 0, 0, A, rA, cA + n1, B, rB + n1, cB + n1, n1, 1, 1, op_count);
+        // 5. C21 = A21 * B11 (iteracyjnie, nadpisanie)
+        //    (A: 1 x n1) * (B: n1 x n1) -> (C: 1 x n1)
+        iterativeMultiply_inplace(C, rC + n1, cC,
+                                  A, rA + n1, cA,
+                                  B, rB, cB,
+                                  1, n1, n1, op_count);
 
-        addMatrices_inplace(C, rC, cC + n1, C, rC, cC + n1, C12_p2, 0, 0, n1, 1, op_count);
+        // 6. C21 += A22 * B21 (iteracyjnie, dodawanie)
+        //    (A: 1 x 1) * (B: 1 x n1) -> (C: 1 x n1)
+        iterativeMultiply_add_inplace(C, rC + n1, cC,
+                                      A, rA + n1, cA + n1,
+                                      B, rB + n1, cB,
+                                      1, 1, n1, op_count);
 
-        // C21 (bottom-left) += A_bottomRow * B_left
-        iterativeMultiply_inplace(C, rC + n1, cC, A, rA + n1, cA, B, rB, cB, 1, n1, n1, op_count);
+        // 7. C22 = A21 * B12 (iteracyjnie, nadpisanie)
+        //    (A: 1 x n1) * (B: n1 x 1) -> (C: 1 x 1)
+        iterativeMultiply_inplace(C, rC + n1, cC + n1,
+                                  A, rA + n1, cA,
+                                  B, rB, cB + n1,
+                                  1, n1, 1, op_count);
 
-        Matrix C21_p2 = createMatrix(1, n1);
-        // additional for C21: A_bottomRight * B_topLeftColumn
-        iterativeMultiply_inplace(C21_p2, 0, 0, A, rA + n1, cA + n1, B, rB + n1, cB, 1, 1, n1, op_count);
-
-        addMatrices_inplace(C, rC + n1, cC, C, rC + n1, cC, C21_p2, 0, 0, 1, n1, op_count);
-
-        // C22 (bottom-right) += A_bottomRow * B_rightCol
-        iterativeMultiply_inplace(C, rC + n1, cC + n1, A, rA + n1, cA, B, rB, cB + n1, 1, n1, 1, op_count);
-
-        Matrix C22_p2 = createMatrix(1, 1);
-        iterativeMultiply_inplace(C22_p2, 0, 0, A, rA + n1, cA + n1, B, rB + n1, cB + n1, 1, 1, 1, op_count);
-
-        C[rC + n1][cC + n1] += C22_p2[0][0];
-        op_count++;
+        // 8. C22 += A22 * B22 (iteracyjnie, dodawanie)
+        //    (A: 1 x 1) * (B: 1 x 1) -> (C: 1 x 1)
+        iterativeMultiply_add_inplace(C, rC + n1, cC + n1,
+                                      A, rA + n1, cA + n1,
+                                      B, rB + n1, cB + n1,
+                                      1, 1, 1, op_count);
     }
 }
 
@@ -161,14 +197,57 @@ void multiply_strassen_inplace(Matrix &C, int rC, int cC,
                                const Matrix &B, int rB, int cB,
                                int m, int k, int p, unsigned long long &op_count)
 {
-    if (m != k || k != p)
+    if (m == k && k == p)
     {
-
-        iterativeMultiply_inplace(C, rC, cC, A, rA, cA, B, rB, cB, m, k, p, op_count);
+        strassenRecursive(C, rC, cC, A, rA, cA, B, rB, cB, m, op_count);
         return;
     }
+    int N = std::min({m, k, p});
 
-    strassenRecursive(C, rC, cC, A, rA, cA, B, rB, cB, m, op_count);
+    int m_fringe = m - N;
+    int k_fringe = k - N;
+    int p_fringe = p - N;
+
+    strassenRecursive(C, rC, cC,
+                      A, rA, cA,
+                      B, rB, cB,
+                      N, op_count);
+
+    if (k_fringe > 0)
+    {
+
+        iterativeMultiply_add_inplace(C, rC, cC,
+                                      A, rA, cA + N,
+                                      B, rB + N, cB,
+                                      N, k_fringe, N, op_count);
+    }
+
+    if (p_fringe > 0)
+    {
+
+        iterativeMultiply_inplace(C, rC, cC + N,
+                                  A, rA, cA,
+                                  B, rB, cB + N,
+                                  N, k, p_fringe, op_count);
+    }
+
+    if (m_fringe > 0)
+    {
+
+        iterativeMultiply_inplace(C, rC + N, cC,
+                                  A, rA + N, cA,
+                                  B, rB, cB,
+                                  m_fringe, k, N, op_count);
+    }
+
+    if (m_fringe > 0 && p_fringe > 0)
+    {
+
+        iterativeMultiply_inplace(C, rC + N, cC + N,
+                                  A, rA + N, cA,
+                                  B, rB, cB + N,
+                                  m_fringe, k, p_fringe, op_count);
+    }
 }
 
 /*

@@ -200,7 +200,7 @@ void iterativeMultiply_inplace(Matrix &C, int rC, int cC,
             for (int l = 0; l < k; ++l)
             {
                 sum += A[rA + i][cA + l] * B[rB + l][cB + j];
-                op_count++;
+                op_count += 2;
             }
             C[rC + i][cC + j] = sum;
             if (k > 1)

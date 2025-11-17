@@ -126,9 +126,10 @@ std::vector<double> solve_block_recursive(Matrix &A, std::vector<double> &b,
     LU_Result lu11 = recursive_lu_factorization(A11, flop_count, algo);
 
     Matrix X = createMatrix(b_size, r_size);
+
+    std::vector<double> A12_col(b_size);
     for (int j = 0; j < r_size; ++j)
     {
-        std::vector<double> A12_col(b_size);
         for (int i = 0; i < b_size; ++i)
             A12_col[i] = A[r12 + i][c12 + j];
 
@@ -143,23 +144,19 @@ std::vector<double> solve_block_recursive(Matrix &A, std::vector<double> &b,
 
     Matrix A21_X = createMatrix(r_size, r_size);
 
-    Matrix A21;
-
     switch (algo)
     {
     case MultiplyAlgorithm::STRASSEN:
 
-        A21 = get_submatrix(A, r21, c21, r_size, b_size);
         multiply_strassen_inplace(A21_X, 0, 0,
-                                  A21, 0, 0,
+                                  A, r21, c21,
                                   X, 0, 0,
                                   r_size, b_size, r_size,
                                   flop_count);
         break;
     case MultiplyAlgorithm::BINET:
-        A21 = get_submatrix(A, r21, c21, r_size, b_size);
         multiply_binet_inplace(A21_X, 0, 0,
-                               A21, 0, 0,
+                               A, r21, c21,
                                X, 0, 0,
                                r_size, b_size, r_size,
                                flop_count);
@@ -181,7 +178,6 @@ std::vector<double> solve_block_recursive(Matrix &A, std::vector<double> &b,
                              r_size, r_size,
                              flop_count);
 
-    std::vector<double> A21_y(r_size);
     for (int i = 0; i < r_size; ++i)
     {
         double sum = 0.0;
@@ -190,17 +186,13 @@ std::vector<double> solve_block_recursive(Matrix &A, std::vector<double> &b,
             sum += A[r21 + i][c21 + k] * y[k];
             flop_count += 2;
         }
-        A21_y[i] = sum;
-    }
-    for (int i = 0; i < r_size; ++i)
-    {
-        b[r21 + i] -= A21_y[i];
+        b[r21 + i] -= sum;
         flop_count++;
     }
 
     std::vector<double> x2 = solve_block_recursive(A, b, flop_count, r22, block_size, algo);
+    std::vector<double> x1(b_size);
 
-    std::vector<double> X_x2(b_size);
     for (int i = 0; i < b_size; ++i)
     {
         double sum = 0.0;
@@ -209,13 +201,7 @@ std::vector<double> solve_block_recursive(Matrix &A, std::vector<double> &b,
             sum += X[i][k] * x2[k];
             flop_count += 2;
         }
-        X_x2[i] = sum;
-    }
-
-    std::vector<double> x1 = y;
-    for (int i = 0; i < b_size; ++i)
-    {
-        x1[i] -= X_x2[i];
+        x1[i] = y[i] - sum;
         flop_count++;
     }
 

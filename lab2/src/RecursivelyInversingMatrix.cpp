@@ -11,6 +11,25 @@
 #include "matrix_Binet.h"
 #include "RecursiveLUFactorization.h"
 
+Matrix negateMatrix(const Matrix &A, unsigned long long &op_count)
+{
+    int rows = A.size();
+    if (rows == 0)
+        return createMatrix(0, 0);
+    int cols = A[0].size();
+
+    Matrix B = createMatrix(rows, cols);
+    for (int i = 0; i < rows; ++i)
+    {
+        for (int j = 0; j < cols; ++j)
+        {
+            B[i][j] = -A[i][j];
+            op_count++;
+        }
+    }
+    return B;
+}
+
 Matrix recursive_invert_internal(const Matrix &A, unsigned long long &op_count, MultiplyAlgorithm algo)
 {
     int n = A.size();
@@ -32,10 +51,12 @@ Matrix recursive_invert_internal(const Matrix &A, unsigned long long &op_count, 
     int n1 = n / 2;
     int n2 = n - n1;
 
-    Matrix A11 = get_submatrix(A, 0, 0, n1, n1);
-    Matrix A12 = get_submatrix(A, 0, n1, n1, n2);
-    Matrix A21 = get_submatrix(A, n1, 0, n2, n1);
-    Matrix A22 = get_submatrix(A, n1, n1, n2, n2);
+    int rA11 = 0, cA11 = 0;
+    int rA12 = 0, cA12 = n1;
+    int rA21 = n1, cA21 = 0;
+    int rA22 = n1, cA22 = n1;
+
+    Matrix A11 = get_submatrix(A, rA11, cA11, n1, n1);
 
     Matrix A11_inv = recursive_invert_internal(A11, op_count, algo);
 
@@ -43,13 +64,13 @@ Matrix recursive_invert_internal(const Matrix &A, unsigned long long &op_count, 
     switch (algo)
     {
     case MultiplyAlgorithm::STRASSEN:
-        multiply_strassen_inplace(S_temp1, 0, 0, A21, 0, 0, A11_inv, 0, 0, n2, n1, n1, op_count);
+        multiply_strassen_inplace(S_temp1, 0, 0, A, rA21, cA21, A11_inv, 0, 0, n2, n1, n1, op_count);
         break;
     case MultiplyAlgorithm::BINET:
-        multiply_binet_inplace(S_temp1, 0, 0, A21, 0, 0, A11_inv, 0, 0, n2, n1, n1, op_count);
+        multiply_binet_inplace(S_temp1, 0, 0, A, rA21, cA21, A11_inv, 0, 0, n2, n1, n1, op_count);
         break;
     default:
-        iterativeMultiply_inplace(S_temp1, 0, 0, A21, 0, 0, A11_inv, 0, 0, n2, n1, n1, op_count);
+        iterativeMultiply_inplace(S_temp1, 0, 0, A, rA21, cA21, A11_inv, 0, 0, n2, n1, n1, op_count);
         break;
     }
 
@@ -57,16 +78,17 @@ Matrix recursive_invert_internal(const Matrix &A, unsigned long long &op_count, 
     switch (algo)
     {
     case MultiplyAlgorithm::STRASSEN:
-        multiply_strassen_inplace(S_temp2, 0, 0, S_temp1, 0, 0, A12, 0, 0, n2, n1, n2, op_count);
+        multiply_strassen_inplace(S_temp2, 0, 0, S_temp1, 0, 0, A, rA12, cA12, n2, n1, n2, op_count);
         break;
     case MultiplyAlgorithm::BINET:
-        multiply_binet_inplace(S_temp2, 0, 0, S_temp1, 0, 0, A12, 0, 0, n2, n1, n2, op_count);
+        multiply_binet_inplace(S_temp2, 0, 0, S_temp1, 0, 0, A, rA12, cA12, n2, n1, n2, op_count);
         break;
     default:
-        iterativeMultiply_inplace(S_temp2, 0, 0, S_temp1, 0, 0, A12, 0, 0, n2, n1, n2, op_count);
+        iterativeMultiply_inplace(S_temp2, 0, 0, S_temp1, 0, 0, A, rA12, cA12, n2, n1, n2, op_count);
         break;
     }
 
+    Matrix A22 = get_submatrix(A, rA22, cA22, n2, n2);
     Matrix S = subtractMatrices(A22, S_temp2, op_count);
 
     Matrix S_inv = recursive_invert_internal(S, op_count, algo);
@@ -76,13 +98,13 @@ Matrix recursive_invert_internal(const Matrix &A, unsigned long long &op_count, 
     switch (algo)
     {
     case MultiplyAlgorithm::STRASSEN:
-        multiply_strassen_inplace(T1, 0, 0, A11_inv, 0, 0, A12, 0, 0, n1, n1, n2, op_count);
+        multiply_strassen_inplace(T1, 0, 0, A11_inv, 0, 0, A, rA12, cA12, n1, n1, n2, op_count);
         break;
     case MultiplyAlgorithm::BINET:
-        multiply_binet_inplace(T1, 0, 0, A11_inv, 0, 0, A12, 0, 0, n1, n1, n2, op_count);
+        multiply_binet_inplace(T1, 0, 0, A11_inv, 0, 0, A, rA12, cA12, n1, n1, n2, op_count);
         break;
     default:
-        iterativeMultiply_inplace(T1, 0, 0, A11_inv, 0, 0, A12, 0, 0, n1, n1, n2, op_count);
+        iterativeMultiply_inplace(T1, 0, 0, A11_inv, 0, 0, A, rA12, cA12, n1, n1, n2, op_count);
         break;
     }
 
@@ -99,7 +121,8 @@ Matrix recursive_invert_internal(const Matrix &A, unsigned long long &op_count, 
         iterativeMultiply_inplace(B12_temp, 0, 0, T1, 0, 0, S_inv, 0, 0, n1, n2, n2, op_count);
         break;
     }
-    Matrix B12 = subtractMatrices(createMatrix(n1, n2), B12_temp, op_count);
+
+    Matrix B12 = negateMatrix(B12_temp, op_count);
 
     Matrix B21_temp = createMatrix(n2, n1);
     switch (algo)
@@ -114,7 +137,8 @@ Matrix recursive_invert_internal(const Matrix &A, unsigned long long &op_count, 
         iterativeMultiply_inplace(B21_temp, 0, 0, S_inv, 0, 0, S_temp1, 0, 0, n2, n2, n1, op_count);
         break;
     }
-    Matrix B21 = subtractMatrices(createMatrix(n2, n1), B21_temp, op_count);
+
+    Matrix B21 = negateMatrix(B21_temp, op_count);
 
     Matrix B11_temp = createMatrix(n1, n1);
     switch (algo)
