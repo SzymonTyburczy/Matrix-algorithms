@@ -4,8 +4,6 @@ from PIL import Image
 import urllib.request
 from io import BytesIO
 
-
-# --- 1. Ładowanie obrazu (Pancerne, z User-Agent) ---
 def load_and_prep_image(url=None, filename=None, size=(512, 512)):
     loaded = False
     img = None
@@ -43,8 +41,6 @@ def load_and_prep_image(url=None, filename=None, size=(512, 512)):
     img_arr = np.array(img, dtype=float)
     return img_arr.astype(np.uint8), img_arr[:, :, 0], img_arr[:, :, 1], img_arr[:, :, 2]
 
-
-# --- 2. Struktura Quadtree ---
 class QuadNode:
     def __init__(self, x, y, width, height, compressed_data=None, children=None):
         self.x = x
@@ -54,8 +50,6 @@ class QuadNode:
         self.compressed_data = compressed_data  # (U, S, Vt)
         self.children = children
 
-
-# --- 3. REKURENCYJNA KOMPRESJA (Zgodna ze slajdem) ---
 def recursive_compress_svd(matrix, delta, b, x, y, min_size=4):
     """
     Algorytm zgodny ze slajdem:
@@ -64,48 +58,31 @@ def recursive_compress_svd(matrix, delta, b, x, y, min_size=4):
     """
     h, w = matrix.shape
 
-    # 1. Oblicz SVD
     try:
         U, S, Vt = np.linalg.svd(matrix, full_matrices=False)
     except np.linalg.LinAlgError:
-        # Pusty/zły blok -> traktujemy jako zero
         return QuadNode(x, y, w, h, compressed_data=(np.zeros((h, 1)), [0], np.zeros((1, w))))
-
-    # 2. Logika decyzyjna (SLIDE LOGIC)
-    # Warunek ze zdjęcia: if D(r+1, r+1) < epsilon
-    # W Pythonie (indeksowanie od 0): sprawdzamy S[b]
-
     should_split = False
-
-    # Jeśli blok jest mniejszy niż 'b', SVD jest dokładne (nie ma co odrzucać)
     if len(S) <= b:
         k = len(S)
         should_split = False
     else:
-        # Tu jest kluczowy warunek ze slajdu:
-        # Sprawdzamy wartość, którą byśmy odrzucili (S[b])
         if S[b] < delta:
-            # Wartość jest mała -> błąd jest mały -> KOMPRESUJEMY (Liść)
             k = b
             should_split = False
         else:
-            # Wartość jest duża -> błąd byłby duży -> DZIELIMY (Rekurencja)
             should_split = True
 
-    # Zabezpieczenie przed nieskończoną rekurencją na pojedynczych pikselach
     if w <= min_size or h <= min_size:
         should_split = False
         k = min(len(S), b)
 
-    # 3. Wykonanie akcji
     if not should_split:
-        # LIŚĆ (CompressMatrix)
         U_k = U[:, :k]
         S_k = S[:k]
         Vt_k = Vt[:k, :]
         return QuadNode(x, y, w, h, compressed_data=(U_k, S_k, Vt_k))
     else:
-        # WĘZEŁ (CreateTree x 4)
         half_w = w // 2
         half_h = h // 2
 
@@ -119,11 +96,9 @@ def recursive_compress_svd(matrix, delta, b, x, y, min_size=4):
         return QuadNode(x, y, w, h, children=children)
 
 
-# --- 4. Rekonstrukcja ---
 def decompress_channel(node, output_matrix):
     if node.children is None:
         U, S, Vt = node.compressed_data
-        # Odtworzenie bloku: A = U * diag(S) * Vt
         if len(S) > 0:
             block = U @ np.diag(S) @ Vt
         else:
@@ -156,20 +131,7 @@ def plot_compressed_image(original_img, nodes_R, nodes_G, nodes_B, info):
     plt.axis('off')
     plt.show()
 
-
-# --- MAIN ---
-
-# Link do obrazu (Astronauta - dobry do testów)
-# Zachód słońca - gładkie przejścia kolorów
-# Przykład dla Windows
-# --- MAIN ---
-
-# Ścieżka do Twojego pliku (używamy surowego stringa 'r' przed cudzysłowem)
 file_path = r"C:\Users\szymo\Desktop\kkk.jpg"
-
-# Poprawne wywołanie funkcji:
-# 1. Przekazujemy pełną ścieżkę (file_path) do parametru filename.
-# 2. Odbieramy 4 zmienne (original_img oraz R, G, B).
 original_img, R, G, B = load_and_prep_image(filename=file_path, size=(512, 512))
 
 # PARAMETRY (Zgodne z teorią)
