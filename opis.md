@@ -1,5 +1,10 @@
-# Sprawozdanie — Lab: Rekurencyjna kompresja obrazów z wykorzystaniem SVD
+---
+header-includes:
+- \usepackage{listings}
+- \lstset{breaklines=true, breakatwhitespace=true, showstringspaces=false}
+---
 
+# Sprawozdanie — Lab: Rekurencyjna kompresja obrazów z wykorzystaniem SVD
 **Autorzy:** Marek Swakoń, Szymon Tyburczy
 
 ## 1. Cel i zakres
@@ -45,11 +50,15 @@ Zgodnie z wymaganiami, przed przystąpieniem do kompresji rekurencyjnej, wykonan
 
  
  *Rys. 1. Wykres wartości osobliwych $\sigma_k$ dla kanałów R, G, B całego obrazu (skala logarytmiczna).*
+
+
 ![Wykres rozkładu wartości osobliwych](Photo_5/os.png)
 
 
 **Analiza wykresu:**
 Wartości osobliwe maleją bardzo szybko. Pierwsza wartość ($\sigma_1$) jest rzędu $10^4 - 10^5$ i reprezentuje główne tło/jasność obrazu. Ostatnie wartości ($\sigma_{last}$) są bliskie zeru i reprezentują szum cyfrowy. Na podstawie tego wykresu wyznaczono parametry graniczne do dalszych eksperymentów.
+
+\newpage
 
 ## 4. Wyniki eksperymentów
 
@@ -73,10 +82,14 @@ W tej serii każdy liść drzewa jest przybliżany macierzą rzędu 1 (iloczyn j
 W tej serii bloki są aproksymowane sumą 4 macierzy rzędu 1. Pozwala to na oddanie bardziej złożonych struktur wewnątrz pojedynczego bloku bez konieczności dzielenia go na mniejsze.
 
 > *Rys. 3. Wyniki kompresji dla $r=4$.*
+
+
 ![Wykres rozkładu wartości osobliwych](Photo_5/r4max.png)
 ![Wykres rozkładu wartości osobliwych](Photo_5/r4min.png)
 ![Wykres rozkładu wartości osobliwych](Photo_5/r4mid.png)
 **Wnioski:** Jakość obrazu jest znacząco lepsza niż dla $r=1$ przy tych samych podziałach. Większy rząd pozwala zachować więcej detali (np. proste tekstury) wewnątrz większych bloków.
+
+\newpage
 
 ## 5. Optymalna kompresja (Wybrane parametry)
 
@@ -87,10 +100,14 @@ W celu uzyskania najlepszego stosunku jakości do rozmiaru, dobrano parametry ek
 * $\delta = 20$
 
 > *Rys. 4. Wynik optymalnej kompresji.*
-> 
+
 ![](Photo_5/opt.png)
 
+
+
 Ustawienia te pozwalają na wierne odwzorowanie tekstur (wysoki rząd) przy zachowaniu adaptacyjnego podziału (niska delta wymusza podział tylko na ostrych krawędziach).
+
+\newpage
 
 ## 6. Implementacja (Kluczowe fragmenty kodu)
 
@@ -146,4 +163,3 @@ def recursive_compress_svd(matrix, delta, b, x, y, min_size=4):
             recursive_compress_svd(matrix[half_h:, half_w:], delta, b, x + half_w, y + half_h, min_size)
         ]
         return QuadNode(x, y, w, h, children=children)
-```
