@@ -43,8 +43,10 @@ Funkcja RecursiveCompressSVD(Macierz A, delta, b):
 
 Zgodnie z wymaganiami, przed przystąpieniem do kompresji rekurencyjnej, wykonano globalny rozkład SVD dla pełnych kanałów R, G, B obrazu wejściowego ($512 \times 512$). Pozwoliło to na zbadanie rozkładu energii informacji w obrazie.
 
- **[TUTAJ WKLEJ ZRZUT EKRANU: Wykres wartości osobliwych]**
+ 
  *Rys. 1. Wykres wartości osobliwych $\sigma_k$ dla kanałów R, G, B całego obrazu (skala logarytmiczna).*
+![Wykres rozkładu wartości osobliwych](Photo_5/os.png)
+
 
 **Analiza wykresu:**
 Wartości osobliwe maleją bardzo szybko. Pierwsza wartość ($\sigma_1$) jest rzędu $10^4 - 10^5$ i reprezentuje główne tło/jasność obrazu. Ostatnie wartości ($\sigma_{last}$) są bliskie zeru i reprezentują szum cyfrowy. Na podstawie tego wykresu wyznaczono parametry graniczne do dalszych eksperymentów.
@@ -56,8 +58,12 @@ Przeprowadzono testy dla 6 przypadków narzuconych w instrukcji.
 ### 4.1. Seria dla rzędu r=1
 W tej serii każdy liść drzewa jest przybliżany macierzą rzędu 1 (iloczyn jednego wektora kolumnowego i wierszowego).
 
-> **[TUTAJ WKLEJ 3 ZRZUTY EKRANU DLA SERII r=1]**
 > *Rys. 2. Wyniki kompresji dla $r=1$ przy różnych wartościach progu $\delta$ (Max, Min, Środek).*
+
+![Wykres rozkładu wartości osobliwych](Photo_5/r1max.png)
+![Wykres rozkładu wartości osobliwych](Photo_5/r1min.png)
+![Wykres rozkładu wartości osobliwych](Photo_5/r1mid.png)
+
 
 **Obserwacje:**
 * **Dla $\delta = \sigma_1$ (Max):** Algorytm prawie nie dzieli obrazu. $\delta$ jest ogromna, więc błąd zawsze wydaje się mały. Obraz składa się z wielkich, jednolitych bloków.
@@ -66,9 +72,10 @@ W tej serii każdy liść drzewa jest przybliżany macierzą rzędu 1 (iloczyn j
 ### 4.2. Seria dla rzędu r=4
 W tej serii bloki są aproksymowane sumą 4 macierzy rzędu 1. Pozwala to na oddanie bardziej złożonych struktur wewnątrz pojedynczego bloku bez konieczności dzielenia go na mniejsze.
 
-> **[TUTAJ WKLEJ 3 ZRZUTY EKRANU DLA SERII r=4]**
 > *Rys. 3. Wyniki kompresji dla $r=4$.*
-
+![Wykres rozkładu wartości osobliwych](Photo_5/r4max.png)
+![Wykres rozkładu wartości osobliwych](Photo_5/r4min.png)
+![Wykres rozkładu wartości osobliwych](Photo_5/r4mid.png)
 **Wnioski:** Jakość obrazu jest znacząco lepsza niż dla $r=1$ przy tych samych podziałach. Większy rząd pozwala zachować więcej detali (np. proste tekstury) wewnątrz większych bloków.
 
 ## 5. Optymalna kompresja (Wybrane parametry)
@@ -79,8 +86,9 @@ W celu uzyskania najlepszego stosunku jakości do rozmiaru, dobrano parametry ek
 * $r = 20$
 * $\delta = 20$
 
-> **[TUTAJ WKLEJ ZRZUT EKRANU "BEST"]**
 > *Rys. 4. Wynik optymalnej kompresji.*
+> 
+![](Photo_5/opt.png)
 
 Ustawienia te pozwalają na wierne odwzorowanie tekstur (wysoki rząd) przy zachowaniu adaptacyjnego podziału (niska delta wymusza podział tylko na ostrych krawędziach).
 
