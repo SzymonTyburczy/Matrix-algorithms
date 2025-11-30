@@ -3,46 +3,91 @@
 **Autorzy:** Marek Swakoń, Szymon Tyburczy
 
 ## 1. Cel i zakres
-
-Celem laboratorium było zaimplementowanie i przeanalizowanie algorytmu **rekurencyjnej kompresji obrazów** (Image Compression) wykorzystującego strukturę drzewa czwórkowego (Quadtree) oraz rozkład według wartości osobliwych (SVD).
+Celem laboratorium było zaimplementowanie i przeanalizowanie algorytmu **rekurencyjnej kompresji obrazów** (Image Compression) wykorzystującego strukturę drzewa czwórkowego (**Quadtree**) oraz rozkład według wartości osobliwych (**SVD**).
 
 Zadanie polegało na:
-1.  Wczytaniu obrazu i rozbiciu go na niezależne kanały RGB.
-2.  Zaimplementowaniu funkcji rekurencyjnej dzielącej obraz na mniejsze bloki w zależności od lokalnej złożoności danych (błędu aproksymacji).
-3.  Zastosowaniu **częściowego SVD (Truncated SVD)** jako metody kompresji w liściach drzewa.
-4.  Wizualizacji efektów kompresji dla różnych parametrów sterujących: maksymalnego rzędu ($b$) oraz progu błędu ($\delta$).
+1. Wczytaniu obrazu i rozbiciu go na niezależne kanały RGB.
+2. Analizie widma wartości osobliwych dla całego obrazu w celu wyznaczenia punktów odniesienia ($\sigma_1, \sigma_{mid}, \sigma_{last}$).
+3. Zaimplementowaniu funkcji rekurencyjnej dzielącej obraz na mniejsze bloki w zależności od lokalnej złożoności danych (błędu aproksymacji).
+4. Wizualizacji efektów kompresji dla narzuconych zestawów parametrów ($r, \delta$) oraz znalezieniu parametrów optymalnych.
 
 ## 2. Podstawy teoretyczne i Algorytm
+Algorytm opiera się na adaptacyjnym podziale obrazu. Obszary "gładkie" są aproksymowane dużymi blokami o niskim rzędzie, natomiast obszary bogate w detale (krawędzie, tekstury) są rekurencyjnie dzielone na mniejsze kwadraty.
 
-Algorytm opiera się na adaptacyjnym podziale obrazu. Obszary "gładkie" (np. niebo, tło) są aproksymowane dużymi blokami o niskim rzędzie, natomiast obszary bogate w detale (krawędzie, tekstury) są rekurencyjnie dzielone na mniejsze fragmenty.
+### Kryterium podziału
+Decyzja o podziale bloku podejmowana jest na podstawie analizy wartości osobliwych macierzy bloku, zgodnie z warunkiem:
 
-### Kryterium podziału (zgodne ze schematem blokowym)
+$$\sigma_{b+1} < \delta$$
 
-Decyzja o podziale bloku podejmowana jest na podstawie analizy wartości osobliwych macierzy, zgodnie z warunkiem:
-$$D(r+1, r+1) < \epsilon$$
+Gdzie:
+* $b$ (lub $r$) – maksymalny rząd (rank) kompresji w liściu.
+* $\delta$ – próg błędu (threshold). Jeśli $(b+1)$-sza wartość osobliwa jest mniejsza od $\delta$, uznajemy, że błąd odrzucenia reszty informacji jest akceptowalny i nie dzielimy bloku.
 
-Gdzie w naszej implementacji:
-- $r$ (lub $b$) – maksymalny rząd (rank) kompresji.
-- $\epsilon$ (lub $\delta$) – próg błędu (threshold).
-- $D(r+1, r+1)$ – to $(b+1)$-sza wartość osobliwa ($\sigma_{b+1}$).
+### Pseudo-kod algorytmu
+```text
+Funkcja RecursiveCompressSVD(Macierz A, delta, b):
+    Oblicz SVD: [U, S, Vt] = svd(A)
+    
+    JEŚLI (wymiary A < min_size) LUB (S[b] < delta):
+        # Warunek stopu: Błąd jest mały lub blok jest zbyt mały
+        Utwórz LIŚĆ.
+        Skompresuj dane zachowując tylko 'b' pierwszych wartości osobliwych.
+    W PRZECIWNYM RAZIE:
+        # Błąd jest zbyt duży -> Dzielimy
+        Podziel A na 4 ćwiartki: TL, TR, BL, BR.
+        Dla każdej ćwiartki wywołaj: RecursiveCompressSVD(ćwiartka, delta, b).
+        Zwróć WĘZEŁ z 4 dziećmi.
+```
 
-### Pseudokod: `RecursiveCompressSVD(Matrix A, b, delta)`
+## 3. Analiza wstępna obrazu (Wartości osobliwe)
 
-1.  **Oblicz SVD:** `[U, S, Vt] = SVD(A)`
-2.  **Warunek Dopuszczalności:**
-    * **JEŚLI** `S[b] < delta` (czyli odrzucona wartość jest mała):
-        * Błąd jest akceptowalny.
-        * **STOP:** Utwórz liść drzewa. Zapisz macierz używając tylko $k=b$ wartości osobliwych.
-    * **W PRZECIWNYM RAZIE:**
-        * Błąd jest zbyt duży (utracilibyśmy istotne informacje).
-        * **REKURENCJA:** Podziel blok $A$ na 4 ćwiartki ($NW, NE, SW, SE$) i wywołaj algorytm dla każdej z nich.
-3.  **Złóż wynik:** Zwróć węzeł drzewa zawierający albo dane skompresowane (liść), albo listę dzieci (węzeł).
+Zgodnie z wymaganiami, przed przystąpieniem do kompresji rekurencyjnej, wykonano globalny rozkład SVD dla pełnych kanałów R, G, B obrazu wejściowego ($512 \times 512$). Pozwoliło to na zbadanie rozkładu energii informacji w obrazie.
 
-## 3. Implementacja (Python)
+ **[TUTAJ WKLEJ ZRZUT EKRANU: Wykres wartości osobliwych]**
+ *Rys. 1. Wykres wartości osobliwych $\sigma_k$ dla kanałów R, G, B całego obrazu (skala logarytmiczna).*
 
-Do realizacji zadania wykorzystano język Python oraz biblioteki `numpy` (algebra liniowa) i `matplotlib` (wizualizacja). Poniżej przedstawiono kluczowe fragmenty kodu.
+**Analiza wykresu:**
+Wartości osobliwe maleją bardzo szybko. Pierwsza wartość ($\sigma_1$) jest rzędu $10^4 - 10^5$ i reprezentuje główne tło/jasność obrazu. Ostatnie wartości ($\sigma_{last}$) są bliskie zeru i reprezentują szum cyfrowy. Na podstawie tego wykresu wyznaczono parametry graniczne do dalszych eksperymentów.
 
-### 3.1. Struktura Drzewa
+## 4. Wyniki eksperymentów
+
+Przeprowadzono testy dla 6 przypadków narzuconych w instrukcji.
+
+### 4.1. Seria dla rzędu r=1
+W tej serii każdy liść drzewa jest przybliżany macierzą rzędu 1 (iloczyn jednego wektora kolumnowego i wierszowego).
+
+> **[TUTAJ WKLEJ 3 ZRZUTY EKRANU DLA SERII r=1]**
+> *Rys. 2. Wyniki kompresji dla $r=1$ przy różnych wartościach progu $\delta$ (Max, Min, Środek).*
+
+**Obserwacje:**
+* **Dla $\delta = \sigma_1$ (Max):** Algorytm prawie nie dzieli obrazu. $\delta$ jest ogromna, więc błąd zawsze wydaje się mały. Obraz składa się z wielkich, jednolitych bloków.
+* **Dla $\delta = \sigma_{last}$ (Min):** Algorytm dzieli obraz na bardzo małe fragmenty (aż do `min_size`), ponieważ próg błędu jest bliski zeru. Obraz jest "ziarnisty", ale czytelny.
+
+### 4.2. Seria dla rzędu r=4
+W tej serii bloki są aproksymowane sumą 4 macierzy rzędu 1. Pozwala to na oddanie bardziej złożonych struktur wewnątrz pojedynczego bloku bez konieczności dzielenia go na mniejsze.
+
+> **[TUTAJ WKLEJ 3 ZRZUTY EKRANU DLA SERII r=4]**
+> *Rys. 3. Wyniki kompresji dla $r=4$.*
+
+**Wnioski:** Jakość obrazu jest znacząco lepsza niż dla $r=1$ przy tych samych podziałach. Większy rząd pozwala zachować więcej detali (np. proste tekstury) wewnątrz większych bloków.
+
+## 5. Optymalna kompresja (Wybrane parametry)
+
+W celu uzyskania najlepszego stosunku jakości do rozmiaru, dobrano parametry eksperymentalnie.
+
+**Wybrane parametry:**
+* $r = 20$
+* $\delta = 20$
+
+> **[TUTAJ WKLEJ ZRZUT EKRANU "BEST"]**
+> *Rys. 4. Wynik optymalnej kompresji.*
+
+Ustawienia te pozwalają na wierne odwzorowanie tekstur (wysoki rząd) przy zachowaniu adaptacyjnego podziału (niska delta wymusza podział tylko na ostrych krawędziach).
+
+## 6. Implementacja (Kluczowe fragmenty kodu)
+
+Poniżej przedstawiono implementację klasy węzła oraz głównej funkcji rekurencyjnej w języku Python.
+
 ```python
 class QuadNode:
     def __init__(self, x, y, width, height, compressed_data=None, children=None):
@@ -50,51 +95,41 @@ class QuadNode:
         self.y = y
         self.width = width
         self.height = height
-        # compressed_data: Tuple (U, S, Vt) - tylko dla liści
-        self.compressed_data = compressed_data
-        # children: Lista 4 obiektów QuadNode - tylko dla węzłów
+        self.compressed_data = compressed_data # (U, S, Vt)
         self.children = children
-
-
 
 def recursive_compress_svd(matrix, delta, b, x, y, min_size=4):
     h, w = matrix.shape
-    
-    # 1. Oblicz SVD (Truncated - full_matrices=False dla wydajności)
+    # 1. Oblicz SVD
     try:
         U, S, Vt = np.linalg.svd(matrix, full_matrices=False)
     except np.linalg.LinAlgError:
-        # Obsługa błędów numerycznych dla pustych/zdegenerowanych macierzy
         return QuadNode(x, y, w, h, compressed_data=(np.zeros((h,1)), [0], np.zeros((1,w))))
 
-    # 2. Logika decyzyjna
+    # 2. Decyzja o podziale
     should_split = False
     
-    # Jeśli naturalny rząd macierzy jest mniejszy niż 'b', nie tracimy danych
+    # Jeśli mamy mniej wartości osobliwych niż 'b', nie ma co ucinać -> Liść
     if len(S) <= b:
         should_split = False
         k = len(S)
     else:
-        # Sprawdzamy kluczowy warunek: czy (b+1)-sza wartość jest poniżej progu?
+        # KLUCZOWY WARUNEK: Czy błąd (reprezentowany przez S[b]) jest mniejszy od delty?
         if S[b] < delta:
-            # Wartość jest mała -> Błąd jest akceptowalny -> LIŚĆ
-            should_split = False
             k = b
+            should_split = False # Błąd mały, nie dzielimy
         else:
-            # Wartość jest duża -> Błąd za duży -> DZIELIMY
-            should_split = True
+            should_split = True  # Błąd duży, dzielimy dalej
 
-    # Zabezpieczenie przed nieskończoną rekurencją (rozmiar minimalny)
+    # Warunek stopu wymiarowego
     if w <= min_size or h <= min_size:
         should_split = False
         k = min(len(S), b)
 
-    # 3. Wykonanie akcji
+    # 3. Rekurencja lub utworzenie liścia
     if not should_split:
-        # Tworzenie liścia z danymi skompresowanymi
         return QuadNode(x, y, w, h, compressed_data=(U[:, :k], S[:k], Vt[:k, :]))
     else:
-        # Podział na 4 ćwiartki (Quadtree split)
         half_w, half_h = w // 2, h // 2
         children = [
             recursive_compress_svd(matrix[:half_h, :half_w], delta, b, x, y, min_size),
@@ -104,43 +139,3 @@ def recursive_compress_svd(matrix, delta, b, x, y, min_size=4):
         ]
         return QuadNode(x, y, w, h, children=children)
 ```
-
-
-## 4. Metodologia testów
-
-W celu weryfikacji poprawności algorytmu przeprowadzono serię eksperymentów na obrazach rzeczywistych (fotografie) oraz syntetycznych (gradienty).
-
-**Parametry eksperymentalne:**
-* **$b$ (Rank):** Testowano zakres od 1 (bardzo agresywna kompresja, każda macierz to iloczyn wektorów kolumnowego i wierszowego) do 10.
-* **$\delta$ (Delta):** Próg błędu sterujący głębokością rekurencji. Testowano wartości z zakresu $10.0$ (wysoka wierność) do $1000.0$ (widoczna blokowość).
-* **`min_size`:** Minimalny rozmiar bloku. Zmieniono domyślną wartość z 4px na 32px w testach wizualizacyjnych, aby wyraźnie uwidocznić strukturę bloków (efekt "szachownicy").
-
-## 5. Wyniki eksperymentów
-
-### 5.1. Adaptacyjność struktury Quadtree
-
-Zaobserwowano wyraźną korelację między strukturą obrazu a głębokością podziału:
-* **Obszary o niskiej częstotliwości (tło, niebo, rozmycia):** Algorytm poprawnie identyfikuje te obszary jako "łatwe" dla SVD. Warunek $\sigma_{b+1} < \delta$ jest spełniony bardzo wcześnie, co skutkuje pozostawieniem dużych bloków (np. 128x128 px).
-* **Obszary o wysokiej częstotliwości (krawędzie, tekstury):** Pojedynczy rozkład SVD niskiego rzędu nie jest w stanie odwzorować ostrych krawędzi (duży błąd aproksymacji). Algorytm wymusza rekurencyjny podział, schodząc aż do poziomu `min_size`, aby zminimalizować błąd lokalny.
-
-### 5.2. Wizualizacja efektów (Przypadek testowy)
-
-Aby potwierdzić działanie algorytmu, przeprowadzono test "ekstremalny" z następującymi parametrami:
-* `b = 1` (Maksymalna kompresja wewnątrz bloku).
-* `delta = 1000.0` (Wysoki próg tolerancji błędu).
-* `min_size = 32` (Wymuszenie dużych najmniejszych bloków).
-
-**Obserwacje:**
-Na obrazie wynikowym uzyskano widoczną strukturę blokową.
-1.  W obszarach jednolitych widoczne są duże kwadraty (powyżej 32px), reprezentowane jako proste gradienty liniowe (cecha SVD rzędu 1).
-2.  W obszarach krawędziowych (kontury obiektów) algorytm dokonał podziału na najmniejsze dozwolone bloki (32x32 px), próbując dopasować gradienty lokalnie.
-3.  Dowodzi to, że mechanizm decyzyjny algorytmu funkcjonuje poprawnie.
-
-*[Miejsce na wklejenie zrzutu ekranu z wygenerowanego obrazu]*
-
-## 6. Wnioski
-
-1.  **Wyższość nad globalnym SVD:** Zastosowanie struktury Quadtree eliminuje główną wadę globalnego SVD, jaką jest rozmywanie lokalnych detali na rzecz globalnego dopasowania. Dzięki rekurencji, detale są izolowane w mniejszych pod-macierzach.
-2.  **Efektywność kompresji:** Metoda jest bardzo skuteczna dla obrazów zawierających duże, gładkie powierzchnie. Dla obrazów typu "szum" (np. trawa, piasek), struktura drzewa staje się bardzo gęsta, co może prowadzić do wzrostu rozmiaru danych zamiast ich redukcji (narzut na przechowywanie struktury drzewa).
-3.  **Stabilność numeryczna:** Algorytm jest stabilny. Wykorzystanie SVD (nawet w wersji *truncated*) gwarantuje optymalną aproksymację macierzy w sensie normy Frobeniusa dla zadanego rzędu.
-4.  **Znaczenie parametru Delta:** Parametr $\delta$ pełni kluczową rolę w balansowaniu między jakością a stopniem kompresji. Jego dynamiczne dostosowywanie (np. zależne od wariancji w bloku) mogłoby stanowić kierunek dalszego rozwoju algorytmu.

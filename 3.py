@@ -1,27 +1,28 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
-import urllib.request
-from io import BytesIO
+import os
+
+
+def save_and_get_disk_size(np_array, temp_path, quality):
+    try:
+        img = Image.fromarray(np_array.astype(np.uint8))
+        img.save(temp_path, format="JPEG", quality=quality)
+        disk_size_bytes = os.path.getsize(temp_path)
+        return disk_size_bytes
+
+    except Exception as e:
+        print(f"Błąd podczas zapisu/mierzenia: {e}")
+        return 0
+
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
 
 def load_and_prep_image(url=None, filename=None, size=(512, 512)):
     loaded = False
     img = None
-
-    if url:
-        try:
-            req = urllib.request.Request(
-                url,
-                data=None,
-                headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-            )
-            with urllib.request.urlopen(req) as response:
-                img_data = response.read()
-            img = Image.open(BytesIO(img_data))
-            loaded = True
-        except Exception as e:
-            print(f"Błąd URL: {e}")
-
     if not loaded and filename:
         try:
             img = Image.open(filename)
@@ -47,36 +48,31 @@ class QuadNode:
         self.y = y
         self.width = width
         self.height = height
-        self.compressed_data = compressed_data  # (U, S, Vt)
+        self.compressed_data = compressed_data
         self.children = children
 
-def recursive_compress_svd(matrix, delta, b, x, y, min_size=4):
-    """
-    Algorytm zgodny ze slajdem:
-    b (r): ranga kompresji
-    delta (epsilon): próg wartości osobliwej
-    """
-    h, w = matrix.shape
 
+def recursive_compress_svd(matrix, delta, b, x, y, min_size=4):
+    h, w = matrix.shape
     try:
         U, S, Vt = np.linalg.svd(matrix, full_matrices=False)
     except np.linalg.LinAlgError:
         return QuadNode(x, y, w, h, compressed_data=(np.zeros((h, 1)), [0], np.zeros((1, w))))
+
     should_split = False
     if len(S) <= b:
         k = len(S)
         should_split = False
     else:
+
         if S[b] < delta:
             k = b
             should_split = False
         else:
             should_split = True
-
     if w <= min_size or h <= min_size:
         should_split = False
         k = min(len(S), b)
-
     if not should_split:
         U_k = U[:, :k]
         S_k = S[:k]
@@ -109,7 +105,7 @@ def decompress_channel(node, output_matrix):
             decompress_channel(child, output_matrix)
 
 
-def plot_compressed_image(original_img, nodes_R, nodes_G, nodes_B, info):
+def plot_compressed_image(original_path, original_img, nodes_R, nodes_G, nodes_B, info):
     h, w, _ = original_img.shape
     Rec_R, Rec_G, Rec_B = np.zeros((h, w)), np.zeros((h, w)), np.zeros((h, w))
 
@@ -120,30 +116,163 @@ def plot_compressed_image(original_img, nodes_R, nodes_G, nodes_B, info):
     Rec_Img = np.stack([Rec_R, Rec_G, Rec_B], axis=2)
     Rec_Img = np.clip(Rec_Img, 0, 255).astype(np.uint8)
 
+    temp_file_path = "temp_compressed_svd.jpg"
+    compressed_disk_size_mb = save_and_get_disk_size(Rec_Img, temp_file_path, quality=100) / (1024 * 1024)
+    compressed_disk_text = f"Rozmiar JPG (j=95): {compressed_disk_size_mb:.2f} MB"
+    try:
+        original_size_bytes = os.path.getsize(original_path)
+        original_size_mb = original_size_bytes / (1024 * 1024)
+        original_size_text = f"Waga pliku na dysku: {original_size_mb:.2f} MB"
+
+    except (FileNotFoundError, TypeError):
+        original_size_text = "Nieznana waga (plik nie istnieje lub ścieżka jest niepoprawna)"
+
+    compressed_size_bytes = Rec_Img.nbytes
+    compressed_size_mb = compressed_size_bytes / (1024 * 1024)
+    compressed_size_text = f"Rozmiar w pamięci (tablica): {compressed_disk_text} MB"
+
     plt.figure(figsize=(12, 6))
-    plt.subplot(1, 2, 1);
-    plt.imshow(original_img);
-    plt.title("Oryginał");
+    plt.subplot(1, 2, 1)
+    plt.imshow(original_img)
+    plt.title(f"Oryginał\n({original_size_text})")
     plt.axis('off')
-    plt.subplot(1, 2, 2);
-    plt.imshow(Rec_Img);
-    plt.title(f"Skompresowany\n{info}");
+    plt.subplot(1, 2, 2)
+    plt.imshow(Rec_Img)
+    plt.title(f"Skompresowany\n{info}\n({compressed_disk_text})")
     plt.axis('off')
     plt.show()
 
-file_path = r"C:\Users\szymo\Desktop\kkk.jpg"
-original_img, R, G, B = load_and_prep_image(filename=file_path, size=(512, 512))
 
-# PARAMETRY (Zgodne z teorią)
-B_RANK = 1      # r: ile wartości zachowujemy w bloku (rank)
-DELTA = 600.0    # epsilon: próg błędu (wartość osobliwa)
-MIN_SIZE = 32
-print(f"Start kompresji algebraicznej (b={B_RANK}, delta={DELTA})...")
 
-# Uruchomienie kompresji dla każdego kanału
-root_R = recursive_compress_svd(R, delta=DELTA, b=B_RANK, x=0, y=0, min_size=32)
-root_G = recursive_compress_svd(G, delta=DELTA, b=B_RANK, x=0, y=0, min_size=32)
-root_B = recursive_compress_svd(B, delta=DELTA, b=B_RANK, x=0, y=0, min_size=32)
+def Compress_Each_Channel(R, G, B, min_size, DELTA, B_RANK):
+    root_R = recursive_compress_svd(R, delta=DELTA, b=B_RANK, x=0, y=0, min_size=min_size)
+    root_G = recursive_compress_svd(G, delta=DELTA, b=B_RANK, x=0, y=0, min_size=min_size)
+    root_B = recursive_compress_svd(B, delta=DELTA, b=B_RANK, x=0, y=0, min_size=min_size)
+    return root_R, root_G, root_B
 
-print("Gotowe. Rysowanie...")
-plot_compressed_image(original_img, root_R, root_G, root_B, f"b={B_RANK}, delta={DELTA}")
+def do(filepath, MIN_SIZE, DELTA, B_RANK):
+    original_img, R, G, B = load_and_prep_image(filename=filepath, size=(512, 512))
+    print(f"Start kompresji algebraicznej (b={B_RANK}, delta={DELTA})...")
+    root_R, root_G, root_B = Compress_Each_Channel(R, G, B, MIN_SIZE, DELTA, B_RANK)
+    print("Gotowe. Rysowanie...")
+    plot_compressed_image(filepath,original_img, root_R, root_G, root_B, f"b={B_RANK}, delta={DELTA}")
+
+
+
+def all():
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    # file_path1 = os.path.join(current_dir, "1.jpg")
+    # file_path2 = os.path.join(current_dir, "2.jpg")
+    # file_path3 = os.path.join(current_dir, "3.jpg")
+    # file_path4 = os.path.join(current_dir, "4.jpg")
+    # file_path6 = os.path.join(current_dir, "6.jpg")
+    # do(file_path1, MIN_SIZE)
+    # do(file_path2, MIN_SIZE)
+    # do(file_path3, MIN_SIZE)
+    # do(file_path4, MIN_SIZE)
+    # do(file_path6, MIN_SIZE)
+    file_path5 = os.path.join(current_dir, "5.jpg")
+    do(file_path5, 20, 10, 20)
+    do(file_path5, 40, 400, 20)
+    do(file_path5, 16, 1600, 20)
+
+
+
+def plot_singular_values(S_channels, labels):
+    plt.figure(figsize=(10, 6))
+    colors = ['r', 'g', 'b']
+
+    for i, (S, label, col) in enumerate(zip(S_channels, labels, colors)):
+        plt.plot(S, label=f'Kanał {label}', color=col)
+
+        plt.scatter(0, S[0], c=col, zorder=5)
+        y_pos = S[0] * (0.3 ** i)
+        plt.text(10, y_pos, rf' $\sigma_1 ({label})$={int(S[0])}', color=col, fontweight='bold')
+
+    plt.yscale('log')
+    plt.title("Wartości osobliwe (Singular Values) dla całej bitmapy")
+    plt.xlabel("Indeks k")
+    plt.ylabel("Wartość osobliwa sigma_k (log)")
+    plt.legend()
+    plt.grid(True, which="both", ls="-", alpha=0.5)
+    plt.show()
+
+def run_report_experiments(filepath):
+    img_arr, R, G, B = load_and_prep_image(filename=filepath, size=(512, 512))
+    U_r, S_r, Vt_r = np.linalg.svd(R, full_matrices=False)
+    U_g, S_g, Vt_g = np.linalg.svd(G, full_matrices=False)
+    U_b, S_b, Vt_b = np.linalg.svd(B, full_matrices=False)
+
+    plot_singular_values([S_r, S_g, S_b], ['R', 'G', 'B'])
+
+    sigma_1 = S_r[0]
+    sigma_last = S_r[-1]
+    sigma_mid = S_r[len(S_r) // 2]
+
+    print(f"Referencyjne Sigmy (z kanału R): s1={sigma_1:.2f}, s_mid={sigma_mid:.2f}, s_last={sigma_last:.2f}")
+
+    cases = [
+        (1, "sigma_1 (Max)", sigma_1),
+        (1, "sigma_last (Min)", sigma_last),
+        (1, "sigma_mid (Srodek)", sigma_mid),
+        (4, "sigma_1 (Max)", sigma_1),
+        (4, "sigma_last (Min)", sigma_last),
+        (4, "sigma_mid (Srodek)", sigma_mid)
+    ]
+
+    for r_val, delta_name, delta_val in cases:
+        print(f"\n--- Eksperyment: r={r_val}, delta={delta_name} ({delta_val:.2f}) ---")
+
+        root_R = recursive_compress_svd(R, delta=delta_val, b=r_val, x=0, y=0, min_size=4)
+        root_G = recursive_compress_svd(G, delta=delta_val, b=r_val, x=0, y=0, min_size=4)
+        root_B = recursive_compress_svd(B, delta=delta_val, b=r_val, x=0, y=0, min_size=4)
+
+        h, w = R.shape
+        Rec_R, Rec_G, Rec_B = np.zeros((h, w)), np.zeros((h, w)), np.zeros((h, w))
+        decompress_channel(root_R, Rec_R)
+        decompress_channel(root_G, Rec_G)
+        decompress_channel(root_B, Rec_B)
+
+        Rec_Img = np.stack([Rec_R, Rec_G, Rec_B], axis=2)
+        Rec_Img = np.clip(Rec_Img, 0, 255).astype(np.uint8)
+
+        plt.figure(figsize=(15, 4))
+        plt.suptitle(f"r={r_val}, delta={delta_name}")
+
+        plt.subplot(1, 4, 1)
+        plt.imshow(Rec_R, cmap='Reds')
+        plt.title("Kanał R")
+        plt.axis('off')
+
+        plt.subplot(1, 4, 2)
+        plt.imshow(Rec_G, cmap='Greens')
+        plt.title("Kanał G")
+        plt.axis('off')
+
+        plt.subplot(1, 4, 3)
+        plt.imshow(Rec_B, cmap='Blues')
+        plt.title("Kanał B")
+        plt.axis('off')
+
+        plt.subplot(1, 4, 4)
+        plt.imshow(Rec_Img)
+        plt.title("Wynik RGB")
+        plt.axis('off')
+
+        plt.show()
+
+    print("\n--- Najlepsza kompresja (Wybrane parametry) ---")
+    my_r = 20
+    my_delta = 20  # Niska delta = wysoka jakość
+    print(f"Moje parametry: r={my_r}, delta={my_delta}")
+
+    root_R = recursive_compress_svd(R, delta=my_delta, b=my_r, x=0, y=0, min_size=8)
+    root_G = recursive_compress_svd(G, delta=my_delta, b=my_r, x=0, y=0, min_size=8)
+    root_B = recursive_compress_svd(B, delta=my_delta, b=my_r, x=0, y=0, min_size=8)
+
+    plot_compressed_image(filepath, img_arr, root_R, root_G, root_B, f"BEST: r={my_r}, d={my_delta}")
+
+
+if __name__ == '__main__':
+    all()
+    run_report_experiments("5.jpg")
