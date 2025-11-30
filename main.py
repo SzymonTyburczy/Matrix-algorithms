@@ -1,23 +1,20 @@
+import io
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 import os
 
-
 def save_and_get_disk_size(np_array, temp_path, quality):
     try:
         img = Image.fromarray(np_array.astype(np.uint8))
-        img.save(temp_path, format="JPEG", quality=quality)
-        disk_size_bytes = os.path.getsize(temp_path)
-        return disk_size_bytes
+        buffer = io.BytesIO()
+        img.save(buffer, format="JPEG", quality=quality)
+        size_bytes = buffer.tell()
+        return size_bytes
 
     except Exception as e:
-        print(f"Błąd podczas zapisu/mierzenia: {e}")
+        print(f"Error calculating size: {e}")
         return 0
-
-    finally:
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
 
 
 def load_and_prep_image(url=None, filename=None, size=(512, 512)):
@@ -86,8 +83,7 @@ def recursive_compress_svd(matrix, delta, b, x, y, min_size=4):
         children.append(recursive_compress_svd(matrix[:half_h, :half_w], delta, b, x, y, min_size))  # TL
         children.append(recursive_compress_svd(matrix[:half_h, half_w:], delta, b, x + half_w, y, min_size))  # TR
         children.append(recursive_compress_svd(matrix[half_h:, :half_w], delta, b, x, y + half_h, min_size))  # BL
-        children.append(
-            recursive_compress_svd(matrix[half_h:, half_w:], delta, b, x + half_w, y + half_h, min_size))  # BR
+        children.append(recursive_compress_svd(matrix[half_h:, half_w:], delta, b, x + half_w, y + half_h, min_size))  # BR
 
         return QuadNode(x, y, w, h, children=children)
 
@@ -104,11 +100,10 @@ def decompress_channel(node, output_matrix):
         for child in node.children:
             decompress_channel(child, output_matrix)
 
-
 def plot_compressed_image(original_path, original_img, nodes_R, nodes_G, nodes_B, info):
     h, w, _ = original_img.shape
     Rec_R, Rec_G, Rec_B = np.zeros((h, w)), np.zeros((h, w)), np.zeros((h, w))
-
+    quality = 100
     decompress_channel(nodes_R, Rec_R)
     decompress_channel(nodes_G, Rec_G)
     decompress_channel(nodes_B, Rec_B)
@@ -117,8 +112,7 @@ def plot_compressed_image(original_path, original_img, nodes_R, nodes_G, nodes_B
     Rec_Img = np.clip(Rec_Img, 0, 255).astype(np.uint8)
 
     temp_file_path = "temp_compressed_svd.jpg"
-    compressed_disk_size_mb = save_and_get_disk_size(Rec_Img, temp_file_path, quality=100) / (1024 * 1024)
-    compressed_disk_text = f"Rozmiar JPG (j=95): {compressed_disk_size_mb:.2f} MB"
+
     try:
         original_size_bytes = os.path.getsize(original_path)
         original_size_mb = original_size_bytes / (1024 * 1024)
@@ -127,9 +121,9 @@ def plot_compressed_image(original_path, original_img, nodes_R, nodes_G, nodes_B
     except (FileNotFoundError, TypeError):
         original_size_text = "Nieznana waga (plik nie istnieje lub ścieżka jest niepoprawna)"
 
-    compressed_size_bytes = Rec_Img.nbytes
-    compressed_size_mb = compressed_size_bytes / (1024 * 1024)
-    compressed_size_text = f"Rozmiar w pamięci (tablica): {compressed_disk_text} MB"
+    compressed_disk_size_mb = save_and_get_disk_size(Rec_Img, temp_file_path, quality=quality) / (1024 * 1024)
+    compressed_disk_text = f"Rozmiar JPG: {compressed_disk_size_mb:.2f} MB"
+
 
     plt.figure(figsize=(12, 6))
     plt.subplot(1, 2, 1)
@@ -287,7 +281,7 @@ def run_report_experiments(filepath):
 
     print("\n--- Najlepsza kompresja (Wybrane parametry) ---")
     my_r = 20
-    my_delta = 20  # Niska delta = wysoka jakość
+    my_delta = 20
     print(f"Moje parametry: r={my_r}, delta={my_delta}")
 
     root_R = recursive_compress_svd(R, delta=my_delta, b=my_r, x=0, y=0, min_size=8)
