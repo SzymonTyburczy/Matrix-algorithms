@@ -220,6 +220,30 @@ def run_report_experiments(filepath):
         (4, "sigma_mid (Srodek)", sigma_mid)
     ]
 
+    plt.figure(figsize=(15, 4))
+    plt.suptitle("Oryginalny obraz i rozbicie na kanały (Referencja)")
+
+    plt.subplot(1, 4, 1)
+    plt.imshow(R, cmap='Reds')
+    plt.title("Oryginał R")
+    plt.axis('off')
+
+    plt.subplot(1, 4, 2)
+    plt.imshow(G, cmap='Greens')
+    plt.title("Oryginał G")
+    plt.axis('off')
+
+    plt.subplot(1, 4, 3)
+    plt.imshow(B, cmap='Blues')
+    plt.title("Oryginał B")
+    plt.axis('off')
+
+    plt.subplot(1, 4, 4)
+    plt.imshow(img_arr.astype(np.uint8))
+    plt.title("Oryginał RGB")
+    plt.axis('off')
+    plt.show()
+
     for r_val, delta_name, delta_val in cases:
         print(f"\n--- Eksperyment: r={r_val}, delta={delta_name} ({delta_val:.2f}) ---")
 
