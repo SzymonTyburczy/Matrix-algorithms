@@ -1,0 +1,178 @@
+<h1
+id="sprawozdanie-lab-rekurencyjna-kompresja-obrazów-z-wykorzystaniem-svd">Sprawozdanie
+— Lab: Rekurencyjna kompresja obrazów z wykorzystaniem SVD</h1>
+<p><strong>Autorzy:</strong> Marek Swakoń, Szymon Tyburczy</p>
+<h2 id="cel-i-zakres">1. Cel i zakres</h2>
+<p>Celem laboratorium było zaimplementowanie i przeanalizowanie
+algorytmu <strong>rekurencyjnej kompresji obrazów</strong> (Image
+Compression) wykorzystującego strukturę drzewa czwórkowego
+(<strong>Quadtree</strong>) oraz rozkład według wartości osobliwych
+(<strong>SVD</strong>).</p>
+<p>Zadanie polegało na: 1. Wczytaniu obrazu i rozbiciu go na niezależne
+kanały RGB. 2. Analizie widma wartości osobliwych dla całego obrazu w
+celu wyznaczenia punktów odniesienia (<span
+class="math inline"><em>σ</em><sub>1</sub>, <em>σ</em><sub><em>m</em><em>i</em><em>d</em></sub>, <em>σ</em><sub><em>l</em><em>a</em><em>s</em><em>t</em></sub></span>).
+3. Zaimplementowaniu funkcji rekurencyjnej dzielącej obraz na mniejsze
+bloki w zależności od lokalnej złożoności danych (błędu aproksymacji).
+4. Wizualizacji efektów kompresji dla narzuconych zestawów parametrów
+(<span class="math inline"><em>r</em>, <em>δ</em></span>) oraz
+znalezieniu parametrów optymalnych.</p>
+<h2 id="podstawy-teoretyczne-i-algorytm">2. Podstawy teoretyczne i
+Algorytm</h2>
+<p>Algorytm opiera się na adaptacyjnym podziale obrazu. Obszary
+“gładkie” są aproksymowane dużymi blokami o niskim rzędzie, natomiast
+obszary bogate w detale (krawędzie, tekstury) są rekurencyjnie dzielone
+na mniejsze kwadraty.</p>
+<h3 id="kryterium-podziału">Kryterium podziału</h3>
+<p>Decyzja o podziale bloku podejmowana jest na podstawie analizy
+wartości osobliwych macierzy bloku, zgodnie z warunkiem:</p>
+<p><span
+class="math display"><em>σ</em><sub><em>b</em> + 1</sub> &lt; <em>δ</em></span></p>
+<p>Gdzie: * <span class="math inline"><em>b</em></span> (lub <span
+class="math inline"><em>r</em></span>) – maksymalny rząd (rank)
+kompresji w liściu. * <span class="math inline"><em>δ</em></span> – próg
+błędu (threshold). Jeśli <span
+class="math inline">(<em>b</em> + 1)</span>-sza wartość osobliwa jest
+mniejsza od <span class="math inline"><em>δ</em></span>, uznajemy, że
+błąd odrzucenia reszty informacji jest akceptowalny i nie dzielimy
+bloku.</p>
+<h3 id="pseudo-kod-algorytmu">Pseudo-kod algorytmu</h3>
+<pre class="text"><code>Funkcja RecursiveCompressSVD(Macierz A, delta, b):
+    Oblicz SVD: [U, S, Vt] = svd(A)
+    
+    JEŚLI (wymiary A &lt; min_size) LUB (S[b] &lt; delta):
+        # Warunek stopu: Błąd jest mały lub blok jest zbyt mały
+        Utwórz LIŚĆ.
+        Skompresuj dane zachowując tylko &#39;b&#39; pierwszych wartości osobliwych.
+    W PRZECIWNYM RAZIE:
+        # Błąd jest zbyt duży -&gt; Dzielimy
+        Podziel A na 4 ćwiartki: TL, TR, BL, BR.
+        Dla każdej ćwiartki wywołaj: RecursiveCompressSVD(ćwiartka, delta, b).
+        Zwróć WĘZEŁ z 4 dziećmi.</code></pre>
+<h2 id="analiza-wstępna-obrazu-wartości-osobliwe">3. Analiza wstępna
+obrazu (Wartości osobliwe)</h2>
+<p>Zgodnie z wymaganiami, przed przystąpieniem do kompresji
+rekurencyjnej, wykonano globalny rozkład SVD dla pełnych kanałów R, G, B
+obrazu wejściowego (<span class="math inline">512 × 512</span>).
+Pozwoliło to na zbadanie rozkładu energii informacji w obrazie.</p>
+<p><em>Rys. 1. Wykres wartości osobliwych <span
+class="math inline"><em>σ</em><sub><em>k</em></sub></span> dla kanałów
+R, G, B całego obrazu (skala logarytmiczna).</em> <img
+src="Photo_5/os.png" alt="Wykres rozkładu wartości osobliwych" /></p>
+<p><strong>Analiza wykresu:</strong> Wartości osobliwe maleją bardzo
+szybko. Pierwsza wartość (<span
+class="math inline"><em>σ</em><sub>1</sub></span>) jest rzędu <span
+class="math inline">10<sup>4</sup> − 10<sup>5</sup></span> i
+reprezentuje główne tło/jasność obrazu. Ostatnie wartości (<span
+class="math inline"><em>σ</em><sub><em>l</em><em>a</em><em>s</em><em>t</em></sub></span>)
+są bliskie zeru i reprezentują szum cyfrowy. Na podstawie tego wykresu
+wyznaczono parametry graniczne do dalszych eksperymentów.</p>
+<h2 id="wyniki-eksperymentów">4. Wyniki eksperymentów</h2>
+<p>Przeprowadzono testy dla 6 przypadków narzuconych w instrukcji.</p>
+<h3 id="seria-dla-rzędu-r1">4.1. Seria dla rzędu r=1</h3>
+<p>W tej serii każdy liść drzewa jest przybliżany macierzą rzędu 1
+(iloczyn jednego wektora kolumnowego i wierszowego).</p>
+<blockquote>
+<p><em>Rys. 2. Wyniki kompresji dla <span
+class="math inline"><em>r</em> = 1</span> przy różnych wartościach progu
+<span class="math inline"><em>δ</em></span> (Max, Min, Środek).</em></p>
+</blockquote>
+<p><img src="Photo_5/r1max.png"
+alt="Wykres rozkładu wartości osobliwych" /> <img
+src="Photo_5/r1min.png" alt="Wykres rozkładu wartości osobliwych" />
+<img src="Photo_5/r1mid.png"
+alt="Wykres rozkładu wartości osobliwych" /></p>
+<p><strong>Obserwacje:</strong> * <strong>Dla <span
+class="math inline"><em>δ</em> = <em>σ</em><sub>1</sub></span>
+(Max):</strong> Algorytm prawie nie dzieli obrazu. <span
+class="math inline"><em>δ</em></span> jest ogromna, więc błąd zawsze
+wydaje się mały. Obraz składa się z wielkich, jednolitych bloków. *
+<strong>Dla <span
+class="math inline"><em>δ</em> = <em>σ</em><sub><em>l</em><em>a</em><em>s</em><em>t</em></sub></span>
+(Min):</strong> Algorytm dzieli obraz na bardzo małe fragmenty (aż do
+<code>min_size</code>), ponieważ próg błędu jest bliski zeru. Obraz jest
+“ziarnisty”, ale czytelny.</p>
+<h3 id="seria-dla-rzędu-r4">4.2. Seria dla rzędu r=4</h3>
+<p>W tej serii bloki są aproksymowane sumą 4 macierzy rzędu 1. Pozwala
+to na oddanie bardziej złożonych struktur wewnątrz pojedynczego bloku
+bez konieczności dzielenia go na mniejsze.</p>
+<blockquote>
+<p><em>Rys. 3. Wyniki kompresji dla <span
+class="math inline"><em>r</em> = 4</span>.</em> <img
+src="Photo_5/r4max.png" alt="Wykres rozkładu wartości osobliwych" />
+<img src="Photo_5/r4min.png"
+alt="Wykres rozkładu wartości osobliwych" /> <img
+src="Photo_5/r4mid.png" alt="Wykres rozkładu wartości osobliwych" />
+<strong>Wnioski:</strong> Jakość obrazu jest znacząco lepsza niż dla
+<span class="math inline"><em>r</em> = 1</span> przy tych samych
+podziałach. Większy rząd pozwala zachować więcej detali (np. proste
+tekstury) wewnątrz większych bloków.</p>
+</blockquote>
+<h2 id="optymalna-kompresja-wybrane-parametry">5. Optymalna kompresja
+(Wybrane parametry)</h2>
+<p>W celu uzyskania najlepszego stosunku jakości do rozmiaru, dobrano
+parametry eksperymentalnie.</p>
+<p><strong>Wybrane parametry:</strong> * <span
+class="math inline"><em>r</em> = 20</span> * <span
+class="math inline"><em>δ</em> = 20</span></p>
+<blockquote>
+<p><em>Rys. 4. Wynik optymalnej kompresji.</em></p>
+<p><img src="Photo_5/opt.png" /></p>
+</blockquote>
+<p>Ustawienia te pozwalają na wierne odwzorowanie tekstur (wysoki rząd)
+przy zachowaniu adaptacyjnego podziału (niska delta wymusza podział
+tylko na ostrych krawędziach).</p>
+<h2 id="implementacja-kluczowe-fragmenty-kodu">6. Implementacja
+(Kluczowe fragmenty kodu)</h2>
+<p>Poniżej przedstawiono implementację klasy węzła oraz głównej funkcji
+rekurencyjnej w języku Python.</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> QuadNode:</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>, x, y, width, height, compressed_data<span class="op">=</span><span class="va">None</span>, children<span class="op">=</span><span class="va">None</span>):</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.x <span class="op">=</span> x</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.y <span class="op">=</span> y</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.width <span class="op">=</span> width</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.height <span class="op">=</span> height</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.compressed_data <span class="op">=</span> compressed_data <span class="co"># (U, S, Vt)</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.children <span class="op">=</span> children</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> recursive_compress_svd(matrix, delta, b, x, y, min_size<span class="op">=</span><span class="dv">4</span>):</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    h, w <span class="op">=</span> matrix.shape</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 1. Oblicz SVD</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">try</span>:</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>        U, S, Vt <span class="op">=</span> np.linalg.svd(matrix, full_matrices<span class="op">=</span><span class="va">False</span>)</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">except</span> np.linalg.LinAlgError:</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> QuadNode(x, y, w, h, compressed_data<span class="op">=</span>(np.zeros((h,<span class="dv">1</span>)), [<span class="dv">0</span>], np.zeros((<span class="dv">1</span>,w))))</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 2. Decyzja o podziale</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    should_split <span class="op">=</span> <span class="va">False</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Jeśli mamy mniej wartości osobliwych niż &#39;b&#39;, nie ma co ucinać -&gt; Liść</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="bu">len</span>(S) <span class="op">&lt;=</span> b:</span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>        should_split <span class="op">=</span> <span class="va">False</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>        k <span class="op">=</span> <span class="bu">len</span>(S)</span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>    <span class="cf">else</span>:</span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>        <span class="co"># KLUCZOWY WARUNEK: Czy błąd (reprezentowany przez S[b]) jest mniejszy od delty?</span></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> S[b] <span class="op">&lt;</span> delta:</span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>            k <span class="op">=</span> b</span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>            should_split <span class="op">=</span> <span class="va">False</span> <span class="co"># Błąd mały, nie dzielimy</span></span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span>:</span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>            should_split <span class="op">=</span> <span class="va">True</span>  <span class="co"># Błąd duży, dzielimy dalej</span></span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Warunek stopu wymiarowego</span></span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> w <span class="op">&lt;=</span> min_size <span class="kw">or</span> h <span class="op">&lt;=</span> min_size:</span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>        should_split <span class="op">=</span> <span class="va">False</span></span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>        k <span class="op">=</span> <span class="bu">min</span>(<span class="bu">len</span>(S), b)</span>
+<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 3. Rekurencja lub utworzenie liścia</span></span>
+<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="kw">not</span> should_split:</span>
+<span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> QuadNode(x, y, w, h, compressed_data<span class="op">=</span>(U[:, :k], S[:k], Vt[:k, :]))</span>
+<span id="cb2-41"><a href="#cb2-41" aria-hidden="true" tabindex="-1"></a>    <span class="cf">else</span>:</span>
+<span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a>        half_w, half_h <span class="op">=</span> w <span class="op">//</span> <span class="dv">2</span>, h <span class="op">//</span> <span class="dv">2</span></span>
+<span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a>        children <span class="op">=</span> [</span>
+<span id="cb2-44"><a href="#cb2-44" aria-hidden="true" tabindex="-1"></a>            recursive_compress_svd(matrix[:half_h, :half_w], delta, b, x, y, min_size),</span>
+<span id="cb2-45"><a href="#cb2-45" aria-hidden="true" tabindex="-1"></a>            recursive_compress_svd(matrix[:half_h, half_w:], delta, b, x <span class="op">+</span> half_w, y, min_size),</span>
+<span id="cb2-46"><a href="#cb2-46" aria-hidden="true" tabindex="-1"></a>            recursive_compress_svd(matrix[half_h:, :half_w], delta, b, x, y <span class="op">+</span> half_h, min_size),</span>
+<span id="cb2-47"><a href="#cb2-47" aria-hidden="true" tabindex="-1"></a>            recursive_compress_svd(matrix[half_h:, half_w:], delta, b, x <span class="op">+</span> half_w, y <span class="op">+</span> half_h, min_size)</span>
+<span id="cb2-48"><a href="#cb2-48" aria-hidden="true" tabindex="-1"></a>        ]</span>
+<span id="cb2-49"><a href="#cb2-49" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> QuadNode(x, y, w, h, children<span class="op">=</span>children)</span></code></pre></div>
