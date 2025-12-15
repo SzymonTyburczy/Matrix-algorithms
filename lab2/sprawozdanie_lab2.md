@@ -116,7 +116,6 @@ Funkcja Rozwiaz(A, b): (Gdzie A to macierz n×n, a b to wektor n×1)
 
             Oblicz "poprawkę" dla wektora b: b′=b2​−A21​⋅(A11−1​⋅b1​)
 
-        Uwaga: Twój kod sprytnie nie liczy A11−1​, tylko rozwiązuje układy równań z L11​ i U11​, aby obliczyć X=(A11−1​⋅A12​) oraz y=(A11−1​⋅b1​), co jest znacznie stabilniejsze i wydajniejsze.
 
     Krok Rekurencji:
 
@@ -128,7 +127,7 @@ Funkcja Rozwiaz(A, b): (Gdzie A to macierz n×n, a b to wektor n×1)
 
         Teraz, gdy mamy x2​, możemy znaleźć x1​ z pierwszego równania: A11​⋅x1​=b1​−A12​⋅x2​
 
-        Rozwiąż ten układ względem x1​ (używając wcześniej policzonego rozkładu L11​U11​): x1 = Rozwiaz(A11, b1 - A12 * x2) (Twój kod robi to jeszcze sprytniej: x1​=y−X⋅x2​)
+        Rozwiąż ten układ względem x1​ (używając wcześniej policzonego rozkładu L11​U11​): x1 = Rozwiaz(A11, b1 - A12 * x2)
 
     Złożenie Wyniku:
 
