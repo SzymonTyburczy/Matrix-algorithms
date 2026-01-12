@@ -274,6 +274,8 @@ void export_specific_case(int k, int rank, double eps) {
     std::cout << "Zapisano: " << filename.str() << std::endl;
 }
 
+#ifndef SKIP_MAIN
+
 int main() {
     try {
         // 1. Główne zadanie (results.txt)
@@ -312,4 +314,7 @@ int main() {
         std::cerr << "Blad: " << e.what() << std::endl;
     }
     return 0;
+
+    
 }
+#endif
