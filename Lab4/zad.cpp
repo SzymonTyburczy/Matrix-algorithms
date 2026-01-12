@@ -256,8 +256,6 @@ void run_sensitivity_analysis(std::ofstream& file) {
     std::cout << "Analiza zakonczona." << std::endl;
 }
 
-// ... (Wszystkie funkcje pomocnicze i run_experiment zostają bez zmian) ...
-
 void export_specific_case(int k, int rank, double eps) {
     int dim = pow(2, k);
     long long N = (long long)dim * dim * dim;
@@ -282,7 +280,7 @@ int main() {
         std::ofstream results_file("results.txt");
         if (results_file.is_open()) {
             run_experiment(2, results_file);
-            run_experiment(3, results_file); // Standardowe k=3
+            run_experiment(3, results_file);
             run_experiment(4, results_file);
             results_file.close();
         }
@@ -294,7 +292,6 @@ int main() {
             sens_file.close();
         }
 
-        // --- 3. NOWOŚĆ: EKSPORT RÓŻNYCH STRUKTUR DO WIZUALIZACJI ---
         // Generujemy 3 przypadki dla k=3 (N=512), żeby pokazać różnice w raporcie
         
         // Przypadek A: Bardzo mocna kompresja (Mało szczegółów)
