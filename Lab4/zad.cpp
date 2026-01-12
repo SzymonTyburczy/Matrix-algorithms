@@ -209,7 +209,7 @@ void run_experiment(int k, std::ofstream& results_file) {
     }
 
     results_file << k << " " << N << " " << t_comp << " " << t_mv << " " << err_mv << " " << t_mm << " " << err_mm << "\n";
-    std::cout << "Zakonczono k=" << k << " Blad MV: " << err_mv << std::endl;
+    std::cout << "Zakonczono k=" << k << endl << "N = "<< N << " Czas kompresji macierzy w ms " << t_comp << endl <<" Czas mnożenia Macierz-Wektor (MV) w mikrosekundach [us]" << t_mv << endl<<" Błąd mnożenia Macierz-Wektor " << err_mv <<endl<< " Czas mnożenia Macierz-Macierz (MM) – w milisekundach [ms] " << t_mm << endl<<" Błąd mnożenia Macierz-Macierz " << err_mm << "\n";
 }
 
 // --- ROZSZERZONA ANALIZA WRAŻLIWOŚCI ---
@@ -303,8 +303,8 @@ int main() {
         export_specific_case(3, 256, 1e-6);
 
         // Przypadek C: Bardzo wysoka precyzja (Prawie jak gęsta)
-        // Rank=128, Epsilon=1e-9 (dużo detali)
-        export_specific_case(3, 128, 1e-9);
+        // Rank=16, Epsilon=1e-9 (dużo detali)
+        export_specific_case(3, 16, 1e-9);
 
         std::cout << "\nGotowe! Wszystkie pliki wygenerowane." << std::endl;
 
