@@ -2,10 +2,8 @@ CXX = g++
 CXXFLAGS = -O3 -std=c++17 -march=native
 EIGEN_INC = -I/usr/include/eigen3
 
-
 TARGET = hmatrix
-SRC = main.cpp
-
+SRC = zad.cpp
 
 all: $(TARGET)
 
