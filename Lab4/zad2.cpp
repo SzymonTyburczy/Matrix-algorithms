@@ -362,7 +362,7 @@ void run_experiment(int k, std::ofstream& results_file) {
     }
 
     results_file << k << " " << N << " " << t_comp << " " << t_mv << " " << err_mv << " " << t_mm << " " << err_mm << "\n";
-    std::cout << "Zakonczono k=" << k << endl << "N = "<< N << " Czas kompresji macierzy w ms " << t_comp << endl <<" Czas mnożenia Macierz-Wektor (MV) w mikrosekundach [us]" << t_mv << endl<<" Błąd mnożenia Macierz-Wektor " << err_mv <<endl<< " Czas mnożenia Macierz-Macierz (MM) – w milisekundach [ms] " << t_mm << endl<<" Błąd mnożenia Macierz-Macierz " << err_mm << "\n";
+    std::cout << "Zakonczono k=" << k << ". Czas MM: " << t_mm << " ms" << std::endl;
 }
 
 void run_sensitivity_analysis(std::ofstream& file) {
@@ -423,5 +423,3 @@ int main() {
     }
     return 0;
 }
-
-//niepoprawnie numrycznie
